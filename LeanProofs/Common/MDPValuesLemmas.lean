@@ -161,6 +161,85 @@ private theorem ReachProbN_zero (ℒ : 𝔏[M]) (T : Set State) (s : State) :
     M.ReachProbN ℒ T 0 s = if s ∈ T then 1 else 0 := by
   simp [ReachProbN]
 
+/-- Prepending a non-target state does not change whether a path visits the target. -/
+private theorem hit_prepend_iff (T : Set State) (s : State) (hs : s ∉ T)
+    (s' : M.succs_univ s) (n : ℕ) (π : Path[M,s',=n+1]) :
+    (∃ x ∈ (π.val.prepend ⟨s, by simp⟩).states, x ∈ T) ↔
+      ∃ x ∈ π.val.states, x ∈ T := by
+  simp [Path.prepend, hs]
+
+open scoped Classical in
+/-- One-step Bellman recurrence for bounded reachability under a memoryless policy. -/
+private theorem ReachProbN_succ (ℒ : 𝔏[M]) (T : Set State) (n : ℕ) (s : State) :
+    M.ReachProbN ℒ T (n + 1) s =
+      if s ∈ T then 1 else M.Φf s (ℒ {s}) (fun s' ↦ M.ReachProbN ℒ T n s') := by
+  by_cases hs : s ∈ T
+  · simp only [ReachProbN, if_pos hs]
+    calc
+      (∑' π : Path[M,s,=n+2], if ∃ x ∈ π.val.states, x ∈ T then π.val.Prob ℒ else 0) =
+          ∑' π : Path[M,s,=n+2], π.val.Prob ℒ := by
+        apply tsum_congr
+        intro π
+        rw [if_pos]
+        refine ⟨s, ?_, hs⟩
+        have hm : π.val[0] ∈ π.val.states := List.getElem_mem (by simp)
+        simpa only [Path_eq.first_eq] using hm
+      _ = 1 := Path.tsum_Prob_eq_one (n + 1)
+  · simp only [ReachProbN, if_neg hs, Φf]
+    rw [Path_eq.eq_succs_univ_biUnion]
+    rw [ENNReal.tsum_biUnion
+      (f := fun π : M.Path ↦ if ∃ x ∈ π.states, x ∈ T then π.Prob ℒ else 0)
+      M.Path_eq_follows_disjoint]
+    apply tsum_congr
+    intro s'
+    rw [← ENNReal.tsum_mul_left]
+    apply tsum_eq_tsum_of_ne_zero_bij fun ⟨π, _⟩ ↦
+      ⟨π.val.prepend ⟨s, by simp⟩, by simp_all⟩
+    · intro ⟨⟨a, _, ha⟩, _⟩ ⟨⟨b, _, hb⟩, _⟩ h
+      simp_all
+      apply (Path.prepend_inj_right _ _ (by simp_all)).mp h
+    · intro π hπ
+      obtain ⟨hbound, hsecond⟩ := π.property
+      have hlen : 1 < ‖π.val‖ := by rw [hbound.left]; omega
+      have htail_first : π.val.tail[0] = (s' : State) := by
+        rw [Path.tail_first, dif_neg (Nat.ne_of_lt' hlen)]
+        exact hsecond
+      have htail : π.val.tail ∈ Path[M,s',=n+1] := by
+        refine ⟨?_, htail_first⟩
+        simp [Path.tail_length, hbound.left]
+      let t : Path[M,s',=n+1] := ⟨π.val.tail, htail⟩
+      have hpre : t.val.prepend ⟨s, by simp [t, htail_first]⟩ = π.val :=
+        Path.tail_prepend' π.val hlen hbound.right
+      have hhit : (∃ x ∈ π.val.states, x ∈ T) ↔ ∃ x ∈ t.val.states, x ∈ T := by
+        rw [← hpre]
+        exact hit_prepend_iff T s hs s' n t
+      have hpre_prob : π.val.Prob ℒ = M.P s (ℒ {s}) s' * t.val.Prob ℒ := by
+        rw [← hpre, Path.prepend_Prob]
+        have hfirst : t.val[0] = (s' : State) := htail_first
+        simp only [hfirst]
+        rw [prob_specialize_markovian ℒ s s' n t]
+        rfl
+      have hsupport : M.P s (ℒ {s}) s' *
+          (if ∃ x ∈ t.val.states, x ∈ T then t.val.Prob ℒ else 0) ≠ 0 := by
+        intro hz
+        apply hπ
+        change (if ∃ x ∈ π.val.states, x ∈ T then π.val.Prob ℒ else 0) = 0
+        by_cases ht : ∃ x ∈ t.val.states, x ∈ T
+        · rw [if_pos (hhit.mpr ht), hpre_prob]
+          simpa only [ht, if_pos] using hz
+        · rw [if_neg (fun h ↦ ht (hhit.mp h))]
+      exact ⟨⟨t, hsupport⟩, Subtype.ext hpre⟩
+    · intro ⟨⟨π, hπ⟩, _⟩
+      dsimp
+      simp only [hit_prepend_iff T s hs s' n ⟨π, hπ⟩]
+      split_ifs with hhit
+      · rw [Path.prepend_Prob]
+        have hfirst : π[0] = (s' : State) := Path_eq.first_eq ⟨π, hπ⟩
+        simp only [hfirst]
+        rw [prob_specialize_markovian ℒ s s' n ⟨π, hπ⟩]
+        rfl
+      · simp
+
 /-- **Bellman characterization** (Baier & Katoen, Theorem 10.15): under a memoryless policy,
 the reachability probabilities are the least fixed point of the reachability Bellman
 operator. -/
