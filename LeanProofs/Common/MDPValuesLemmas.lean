@@ -240,11 +240,35 @@ private theorem ReachProbN_succ (ℒ : 𝔏[M]) (T : Set State) (n : ℕ) (s : S
         rfl
       · simp
 
+open OmegaCompletePartialOrder
+
+/-- The reachability Bellman operator is ω-Scott continuous. -/
+private theorem reachΦℒ_ωScottContinuous (ℒ : 𝔏[M]) (T : Set State) :
+    ωScottContinuous (M.reachΦℒ ℒ T) := by
+  refine ωScottContinuous.of_map_ωSup_of_orderHom fun c ↦ funext fun s ↦ ?_
+  by_cases hs : s ∈ T
+  · simp [reachΦℒ, hs, ωSup]
+  · simpa [reachΦℒ, hs, ωSup] using
+      (Φf_ωScottContinuous (M := M) (s := s) (a := ℒ {s})).map_ωSup c
+
+/-- Bounded reachability consists exactly of the nonzero Kleene iterates from `⊥`. -/
+private theorem ReachProbN_eq_iterate (ℒ : 𝔏[M]) (T : Set State) (n : ℕ) :
+    (fun s ↦ M.ReachProbN ℒ T n s) = (M.reachΦℒ ℒ T)^[n + 1] ⊥ := by
+  induction n with
+  | zero => funext s; simp [ReachProbN_zero, reachΦℒ, Φf]
+  | succ n ih => rw [Function.iterate_succ']; simp [ih, ReachProbN_succ, reachΦℒ]
+
 /-- **Bellman characterization** (Baier & Katoen, Theorem 10.15): under a memoryless policy,
 the reachability probabilities are the least fixed point of the reachability Bellman
 operator. -/
 theorem ReachProb_eq_lfp (ℒ : 𝔏[M]) :
     (fun s ↦ M.ReachProb ℒ T s) = OrderHom.lfp (M.reachΦℒ ℒ T) := by
-  sorry
+  calc
+    (fun s ↦ M.ReachProb ℒ T s) = ⨆ n, (M.reachΦℒ ℒ T)^[n + 1] ⊥ := by
+      funext s
+      simp only [ReachProb, ReachProbN_eq_iterate, iSup_apply]
+    _ = ⨆ n, (M.reachΦℒ ℒ T)^[n] ⊥ := iSup_iterate_succ' _
+    _ = OrderHom.lfp (M.reachΦℒ ℒ T) :=
+      (fixedPoints.lfp_eq_sSup_iterate _ (reachΦℒ_ωScottContinuous ℒ T)).symm
 
 end MDP
