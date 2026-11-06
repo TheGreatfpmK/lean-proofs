@@ -88,11 +88,19 @@ theorem scheduler_eq (𝒮₁ 𝒮₂ : 𝔖[M]) : 𝒮₁ = 𝒮₂ := by
 
 /-- On a Markov chain, the minimal and maximal reachability probabilities agree. -/
 theorem Pmin_eq_Pmax : M.Pmin T s = M.Pmax T s := by
-  sorry
+  simp only [Pmin, Pmax]
+  apply le_antisymm
+  · exact iInf_le_of_le M.defaultPolicy (le_iSup_of_le M.defaultPolicy le_rfl)
+  · refine iSup_le fun ℒ₁ ↦ le_iInf fun ℒ₂ ↦ ?_
+    rw [hM.scheduler_eq (ℒ₁ : 𝔖[M]) (ℒ₂ : 𝔖[M])]
 
 /-- On a Markov chain, the minimal and maximal expected total costs agree. -/
 theorem Vmin_eq_Vmax (c : M.Costs) : M.Vmin c s = M.Vmax c s := by
-  sorry
+  simp only [Vmin, Vmax]
+  apply le_antisymm
+  · exact iInf_le_of_le M.defaultPolicy (le_iSup_of_le M.defaultPolicy le_rfl)
+  · refine iSup_le fun ℒ₁ ↦ le_iInf fun ℒ₂ ↦ ?_
+    rw [hM.scheduler_eq (ℒ₁ : 𝔖[M]) (ℒ₂ : 𝔖[M])]
 
 end IsMarkovChain
 
