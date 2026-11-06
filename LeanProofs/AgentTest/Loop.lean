@@ -22,7 +22,14 @@ noncomputable def geo : pGCL Γg :=
 /-- **Test 4.** Upper bound: the expected cost is at most 2 when the loop runs, else 0. -/
 theorem geo_le_two (O : Optimization) :
     wp[O]⟦@geo⟧ 0 ≤ fun σ ↦ if 0 < σ "x" then 2 else 0 := by
-  sorry
+  apply ParkInduction
+  intro σ
+  by_cases h : 0 < σ "x"
+  · simp [Ψ, h, Exp.const, BExpr.lt]
+    ring_nf
+    rw [show (4 : ENNReal) = 2 * 2 by norm_num, ← mul_assoc,
+      ENNReal.inv_mul_cancel (by norm_num) (by norm_num), one_mul]
+  · simp [Ψ, h, Exp.const, BExpr.lt]
 
 /-- **Test 5.** Lower bound: the expected cost is at least 3/2 when the loop runs. -/
 theorem geo_ge_three_halves (O : Optimization) :
