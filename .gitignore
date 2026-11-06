@@ -13,3 +13,6 @@ scripts/local.env
 
 # Personal Claude Code settings (permission mode etc.)
 .claude/settings.local.json
+
+# lean4-skills run store (only with /autoprove --persist)
+.lean4-skills/

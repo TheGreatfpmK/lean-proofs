@@ -115,6 +115,14 @@ follow `AGENTS.md` sections 4–6: statements are fixed, no `sorry` or axioms, a
   `rg` must be installed (`sudo apt install ripgrep`).
 - OpenCode truncates large output (about 72 KB) when stdout is a pipe. Write to a file instead,
   for example `opencode export <id> > file`.
+- The lean4 skill's `/autoprove` uses `lean4-skills-cycle-tracker`, whose session ID lives in an
+  env file that the host must re-source before every command. Claude Code does that; OpenCode
+  does not. `scripts/lean` therefore sources `.lake/lean4-skills-session.env` (`LEAN4_ENV_FILE`
+  in `lib.sh`), and `scripts/lean run lean4-skills-cycle-tracker` keeps the tracker's state in
+  `.lake/lean4-skills-tmp`, because `/tmp` does not survive fresh containers. Our
+  `/autoprove` wrapper overrides the workflow's `fill:` commit messages with `prove(...)`.
+- Keep the answers to test statements (which ones are false, reference proofs) out of the repo.
+  Agents can read every file in it.
 
 ## Checklist after changing tooling
 

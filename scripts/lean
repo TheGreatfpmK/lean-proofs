@@ -220,6 +220,13 @@ cmd_build() {
 
 cmd_run() {
   [ $# -ge 1 ] || lp_die "usage: scripts/lean run CMD [ARG...]"
+  if [ "$1" = lean4-skills-cycle-tracker ] && [ -d "$ROOT/.lake" ]; then
+    # Keep the tracker's state next to the build instead of in /tmp, which does not survive
+    # between calls when each call runs in a fresh container on the build server.
+    mkdir -p "$ROOT/.lake/lean4-skills-tmp"
+    TMPDIR="$ROOT/.lake/lean4-skills-tmp" "$@"
+    return
+  fi
   "$@"
 }
 

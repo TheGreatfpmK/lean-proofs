@@ -90,6 +90,7 @@ The skill was written for direct `lake` access. **Translate its commands as foll
 | `lean4-skills-check-axioms-inline F.lean` | `scripts/lean axioms F.lean` |
 | `lean4-skills-sorry-analyzer ...` | `scripts/lean sorries [path]` |
 | other `lean4-skills-*` helpers (search, find-usages, …) | `scripts/lean run lean4-skills-<name> ...` |
+| `lean4-skills-cycle-tracker init/tick/status/stop` | `scripts/lean run lean4-skills-cycle-tracker ...` (the session is kept between calls automatically) |
 | scratch files in `/tmp` | `Scratch/*.lean` |
 | `lean_*` MCP tools | use them if available, else the rows above |
 | "commit" / "checkpoint" | section 7 of this file (commit, never push) |

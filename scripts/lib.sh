@@ -30,6 +30,14 @@ lp_activate_env() {
   export LEAN4_PLUGIN_ROOT
   export LEAN4_SCRIPTS="$LEAN4_PLUGIN_ROOT/lib/scripts"
   export LEAN4_REFS="$LEAN4_PLUGIN_ROOT/skills/lean4/references"
+  # The lean4-skills cycle tracker (used by /autoprove) records its session in an env file that
+  # the host must re-source before every command; Claude Code does that via CLAUDE_ENV_FILE,
+  # OpenCode does not, so scripts/lean does it here.
+  if [ -d "$LP_ROOT/.lake" ]; then
+    export LEAN4_ENV_FILE="$LP_ROOT/.lake/lean4-skills-session.env"
+    # shellcheck disable=SC1090
+    [ -f "$LEAN4_ENV_FILE" ] && . "$LEAN4_ENV_FILE"
+  fi
 }
 
 # True when this checkout has a usable local Lean build (Mathlib oleans downloaded).
