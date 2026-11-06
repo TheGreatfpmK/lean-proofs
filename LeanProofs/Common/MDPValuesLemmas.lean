@@ -62,7 +62,18 @@ theorem ReachProb_empty : M.ReachProb 𝒮 ∅ s = 0 := by
 /-- Reachability is monotone in the target set. -/
 theorem ReachProb_mono_target {T T' : Set State} (h : T ⊆ T') :
     M.ReachProb 𝒮 T s ≤ M.ReachProb 𝒮 T' s := by
-  sorry
+  classical
+  apply iSup_mono
+  intro n
+  apply ENNReal.tsum_le_tsum
+  intro π
+  by_cases hπ : ∃ x ∈ π.val.states, x ∈ T
+  · have hπ' : ∃ x ∈ π.val.states, x ∈ T' := by
+      obtain ⟨x, hx, hxT⟩ := hπ
+      exact ⟨x, hx, h hxT⟩
+    rw [if_pos hπ, if_pos hπ']
+  · rw [if_neg hπ]
+    exact zero_le
 
 namespace IsMarkovChain
 
@@ -71,7 +82,9 @@ include hM
 
 /-- On a Markov chain there is no nondeterminism: all schedulers coincide. -/
 theorem scheduler_eq (𝒮₁ 𝒮₂ : 𝔖[M]) : 𝒮₁ = 𝒮₂ := by
-  sorry
+  apply Scheduler.ext
+  intro π
+  exact (hM.existsUnique_act π.last).unique (𝒮₁.property π) (𝒮₂.property π)
 
 /-- On a Markov chain, the minimal and maximal reachability probabilities agree. -/
 theorem Pmin_eq_Pmax : M.Pmin T s = M.Pmax T s := by
