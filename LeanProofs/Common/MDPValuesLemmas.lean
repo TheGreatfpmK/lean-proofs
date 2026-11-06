@@ -47,11 +47,17 @@ theorem ReachProbN_mono : Monotone fun n ↦ M.ReachProbN 𝒮 T n s := by
 
 /-- A state in `T` reaches `T` with probability 1. -/
 theorem ReachProb_of_mem (h : s ∈ T) : M.ReachProb 𝒮 T s = 1 := by
-  sorry
+  apply le_antisymm (ReachProb_le_one 𝒮 T s)
+  have h0 : M.ReachProbN 𝒮 T 0 s = 1 := by
+    classical
+    simp [ReachProbN, h]
+  calc
+    1 = M.ReachProbN 𝒮 T 0 s := h0.symm
+    _ ≤ M.ReachProb 𝒮 T s := le_iSup (fun n ↦ M.ReachProbN 𝒮 T n s) 0
 
 /-- Nothing reaches the empty set. -/
 theorem ReachProb_empty : M.ReachProb 𝒮 ∅ s = 0 := by
-  sorry
+  simp [ReachProb, ReachProbN]
 
 /-- Reachability is monotone in the target set. -/
 theorem ReachProb_mono_target {T T' : Set State} (h : T ⊆ T') :
