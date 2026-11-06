@@ -29,7 +29,13 @@ variable (𝒮 : 𝔖[M]) (T : Set State) (s : State)
 
 /-- Bounded reachability is a probability. -/
 theorem ReachProbN_le_one (n : ℕ) : M.ReachProbN 𝒮 T n s ≤ 1 := by
-  sorry
+  classical
+  calc
+    M.ReachProbN 𝒮 T n s ≤ ∑' π : Path[M,s,=n+1], π.val.Prob 𝒮 := by
+      apply ENNReal.tsum_le_tsum
+      intro π
+      split_ifs <;> simp
+    _ = 1 := Path.tsum_Prob_eq_one n
 
 /-- Reachability is a probability. -/
 theorem ReachProb_le_one : M.ReachProb 𝒮 T s ≤ 1 := by
