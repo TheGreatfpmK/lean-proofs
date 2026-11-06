@@ -110,6 +110,11 @@ follow `AGENTS.md` sections 4–6: statements are fixed, no `sorry` or axioms, a
   `~/disk2/lean-proofs/cache` and is shared.
 - The `test/` project next door gave its Mathlib checkout to this repo. It needs
   `lake exe cache get` before it works again.
+- The lean-lsp MCP tool `lean_local_search` needs `ripgrep` (`rg`). The image includes it. On the
+  laptop, the shell's `rg` is only a Claude Code function that subprocesses cannot see, so a real
+  `rg` must be installed (`sudo apt install ripgrep`).
+- OpenCode truncates large output (about 72 KB) when stdout is a pipe. Write to a file instead,
+  for example `opencode export <id> > file`.
 
 ## Checklist after changing tooling
 
@@ -129,13 +134,26 @@ follow `AGENTS.md` sections 4–6: statements are fixed, no `sorry` or axioms, a
 - Reviewing agent work: check that no statement changed, only proof bodies and new helpers
   (`git diff main bob/main -- LeanProofs`). Check axioms with `scripts/lean axioms FILE DECL`.
   Check the commit prefixes.
+- Inspecting how an agent worked (tool calls, errors, tokens):
+  1. `scripts/agent exec opencode session list`;
+  2. `scripts/agent exec bash -c 'opencode export <id> > /work/Scratch/s.json'`;
+  3. copy it with `ssh bob cat ~/disk2/lean-proofs/agent/Scratch/s.json`, then delete it there;
+  4. summarize the `messages[].parts[]` entries with `type == "tool"`.
 - When an agent misbehaves (loops, changes statements, runs `lake` directly, leaves the tree
   dirty), fix the cause in `AGENTS.md` or the commands rather than only the symptom.
+- First end-to-end test (2026-11-06, `LeanProofs/AgentTest`, ostrava/kimi-k3.1-pro on bob):
+  3/3 statements proved in 15 min with 59 tool calls, about 92k input and 7.5k output tokens.
+  It followed `AGENTS.md` fully (skill, `scripts/lean`, MCP goals and multi-attempt, check,
+  axioms, build, `PROGRESS.md`, one `prove(...)` commit, clean tree, report). The only problem
+  was that `rg` was missing from the image, which is now fixed.
 
 ## Open items
 
-- No real model session has been run yet, on the laptop or on bob.
-- Default model and push policy are to be refined. For now, agents commit and the user pushes.
+- The bob agent works end to end with a plain prompt. Not yet tested: `/autoprove` (the lean4
+  skill's cycle-tracker protocol), a laptop agent session, and harder statements.
+- The user chose ostrava/kimi-k3.1-pro on bob (stored in `agent-home`). `opencode.json` sets no
+  default model yet. The push policy is to be refined; for now, agents commit and the user
+  pushes.
 - OpenCode's `serve`/`attach` (laptop interface for the bob agent) is untested.
 - Unused Lean toolchains on the laptop (v4.32.0, v4.33.0-rc1, about 5.7 GB) and
   `~/.cache/mathlib` could be removed if the user agrees.
