@@ -39,3 +39,14 @@ Status: stated (has `sorry`, ready to prove) · in progress · proved · blocked
 - `scripts/lean check LeanProofs/AgentTest/Loop.lean` passes with only the intentional `sorry` in
   the false target. The four completed declarations use only `propext`, `Classical.choice`, and
   `Quot.sound`. The whole-project build and final verification remain to be run.
+
+### 2026-11-06 (kimi-k3.1-pro, autoprove stop)
+- Cycles 2–4 made no edits: the only remaining target was the already-refuted `geo_le_one`, and
+  the rerun guard prevented repeating the same blocker without new evidence. The session stopped
+  on `max-stuck` after 4 cycles, with no deep-mode invocations.
+- Final `scripts/lean check LeanProofs/AgentTest/Loop.lean` passed with only the intentional
+  `sorry` in the false target. `scripts/lean build` passed for the whole project (2080 jobs).
+- Final axiom checks for `geo_le_two`, `geo_ge_three_halves`, `geo_le_one_counterexample`, and
+  `geo_le_one_salvaged` report only `propext`, `Classical.choice`, and `Quot.sound`.
+- Comparing against commit `9672579` confirms that all user-supplied statements are unchanged;
+  only proof bodies and the two falsification artifacts were added.
