@@ -34,7 +34,23 @@ theorem geo_le_two (O : Optimization) :
 /-- **Test 5.** Lower bound: the expected cost is at least 3/2 when the loop runs. -/
 theorem geo_ge_three_halves (O : Optimization) :
     (fun σ ↦ if 0 < σ "x" then 3 / 2 else 0) ≤ wp[O]⟦@geo⟧ 0 := by
-  sorry
+  simp only [geo, wp_loop_eq_iter]
+  intro σ
+  simp only [_root_.iSup_apply]
+  refine le_iSup_of_le 2 ?_
+  by_cases h : 0 < σ "x"
+  · simp [Ψ, Function.iterate_succ_apply, h, Exp.const, BExpr.lt]
+    have htwo : (2 : ENNReal)⁻¹ + 2⁻¹ = 1 := by
+      rw [← two_mul, ENNReal.mul_inv_cancel] <;> norm_num
+    have hthree : (3 / 2 : ENNReal) = 1 + 2⁻¹ := by
+      rw [div_eq_mul_inv]
+      calc
+        3 * (2 : ENNReal)⁻¹ = 2⁻¹ + 2 * 2⁻¹ := by ring
+        _ = 2⁻¹ + 1 := by rw [ENNReal.mul_inv_cancel] <;> norm_num
+        _ = 1 + 2⁻¹ := add_comm _ _
+    rw [htwo, hthree, show 1 + 1 = (2 : ENNReal) by norm_num,
+      ENNReal.inv_mul_cancel (by norm_num) (by norm_num), add_comm]
+  · simp [Ψ, Function.iterate_succ_apply, h, Exp.const, BExpr.lt]
 
 /-- **Test 6.** Upper bound: the expected cost is at most 1 when the loop runs, else 0. -/
 theorem geo_le_one (O : Optimization) :
