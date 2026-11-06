@@ -41,9 +41,44 @@ theorem ReachProbN_le_one (n : ℕ) : M.ReachProbN 𝒮 T n s ≤ 1 := by
 theorem ReachProb_le_one : M.ReachProb 𝒮 T s ≤ 1 := by
   exact iSup_le fun n ↦ ReachProbN_le_one 𝒮 T s n
 
+/-- One additional step preserves the mass of paths that have already reached `T`. -/
+private theorem ReachProbN_le_succ (n : ℕ) :
+    M.ReachProbN 𝒮 T n s ≤ M.ReachProbN 𝒮 T (n + 1) s := by
+  classical
+  simp only [ReachProbN]
+  rw [Path_eq.eq_biUnion_succs_univ]
+  rw [ENNReal.tsum_biUnion
+    (f := fun π : M.Path ↦ if ∃ x ∈ π.states, x ∈ T then π.Prob 𝒮 else 0)]
+  · apply ENNReal.tsum_le_tsum
+    intro π
+    by_cases hπ : ∃ x ∈ π.val.states, x ∈ T
+    · calc
+        (if ∃ x ∈ π.val.states, x ∈ T then π.val.Prob 𝒮 else 0) ≤ π.val.Prob 𝒮 :=
+          (if_pos hπ).le
+        _ = ∑' π' : π.val.succs_univ, π'.val.Prob 𝒮 :=
+          (Path.tsum_succs_univ_Prob_eq_one π.val).symm
+        _ = ∑' π' : π.val.succs_univ,
+            if ∃ x ∈ π'.val.states, x ∈ T then π'.val.Prob 𝒮 else 0 := by
+          apply tsum_congr
+          intro π'
+          have hvisit : ∃ x ∈ π'.val.states, x ∈ T := by
+            obtain ⟨x, hx, hxT⟩ := hπ
+            refine ⟨x, ?_, hxT⟩
+            have hxprev : x ∈ π'.val.prev.states := by
+              rw [Path.mem_succs_univ_prev π'.property]
+              exact hx
+            have hlen : ‖π'.val‖ ≠ 1 := Nat.ne_of_lt' π'.property.2
+            simp only [Path.prev, if_neg hlen] at hxprev
+            exact List.mem_of_mem_dropLast hxprev
+          rw [if_pos hvisit]
+    · rw [if_neg hπ]
+      exact zero_le
+  · intro ⟨_, _⟩ _ ⟨_, _⟩ _ _
+    apply Path_eq.succs_univ_disjoint M (s := s) (n := n + 1) <;> simp_all
+
 /-- Allowing more steps can only increase the probability of having reached `T`. -/
 theorem ReachProbN_mono : Monotone fun n ↦ M.ReachProbN 𝒮 T n s := by
-  sorry
+  exact monotone_nat_of_le_succ (ReachProbN_le_succ 𝒮 T s)
 
 /-- A state in `T` reaches `T` with probability 1. -/
 theorem ReachProb_of_mem (h : s ∈ T) : M.ReachProb 𝒮 T s = 1 := by
