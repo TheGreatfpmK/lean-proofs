@@ -139,6 +139,28 @@ theorem Vmin_eq_Vmax (c : M.Costs) : M.Vmin c s = M.Vmax c s := by
 
 end IsMarkovChain
 
+open scoped Classical in
+/-- Specializing a memoryless scheduler does not change probabilities of paths with the
+prescribed first state. -/
+private theorem prob_specialize_markovian (ℒ : 𝔏[M]) (s : State) (s' : M.succs_univ s)
+    (n : ℕ) (π : Path[M,s',=n+1]) :
+    π.val.Prob (ℒ.toScheduler[s ↦ s']) = π.val.Prob ℒ := by
+  have hsched : ∀ i : Fin (‖π.val‖ - 1),
+      ℒ.toScheduler[s ↦ s'] (π.val.take i) = ℒ (π.val.take i) := by
+    intro i
+    rw [Scheduler.specialize_apply]
+    have h : (π.val.take i)[0] = s' := by simp
+    rw [dif_pos h]
+    apply MScheduler.prepend
+  simp only [Path.Prob, Fin.getElem_fin, Fin.val_succ, hsched]
+  rfl
+
+open scoped Classical in
+/-- Bounded reachability in zero steps is the target's indicator function. -/
+private theorem ReachProbN_zero (ℒ : 𝔏[M]) (T : Set State) (s : State) :
+    M.ReachProbN ℒ T 0 s = if s ∈ T then 1 else 0 := by
+  simp [ReachProbN]
+
 /-- **Bellman characterization** (Baier & Katoen, Theorem 10.15): under a memoryless policy,
 the reachability probabilities are the least fixed point of the reachability Bellman
 operator. -/
