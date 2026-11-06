@@ -19,6 +19,11 @@ AGENTS.md takes precedence over the workflow wherever they differ. In particular
 - **Statements:** use `--statement-policy=preserve` and never change a target statement. If a
   target looks false or mis-formalized, follow AGENTS.md section 5: refute it in a separate
   theorem, or record the evidence. Mark it in PROGRESS.md and move on.
+  - Do **not** add "salvaged" or corrected variants unless the user asks; the workflow's salvage
+    step does not apply here.
+  - A target that is refuted (marked `false`, with a proved refutation) or `blocked` (evidence
+    recorded) is resolved. Do not spend further cycles on it. When no open target is left,
+    stop at once: run the final checks and `scripts/lean run lean4-skills-cycle-tracker stop`.
 - **Commits:** where the workflow says `git commit -m "fill: [theorem] - [tactic]"`, use
   `git commit -m "prove(<Project>): fill <theorem> - <tactic>"`. Stage only the files you
   edited. Never push.

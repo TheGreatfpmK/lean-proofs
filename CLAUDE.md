@@ -154,6 +154,14 @@ follow `AGENTS.md` sections 4–6: statements are fixed, no `sorry` or axioms, a
   It followed `AGENTS.md` fully (skill, `scripts/lean`, MCP goals and multi-attempt, check,
   axioms, build, `PROGRESS.md`, one `prove(...)` commit, clean tree, report). The only problem
   was that `rg` was missing from the image, which is now fixed.
+- First `/autoprove` test (2026-11-06, `AgentTest/Loop.lean`, kimi-k3.1-pro on bob): 49 min,
+  108 tool calls, about 207k input and 19k output tokens.
+  - It proved the two true loop bounds (Park induction; Kleene iteration).
+  - It left the deliberately false statement unchanged and refuted it in a separate theorem.
+  - The cycle tracker worked through `scripts/lean run`; commits used `prove(...)`; the tree
+    was left clean.
+  - Two issues, now addressed in `.opencode/commands/autoprove.md`: it wasted 3 cycles on the
+    already-refuted target, and it added an unrequested "salvaged" variant.
 
 ## Open items
 
