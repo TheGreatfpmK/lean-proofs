@@ -1,0 +1,38 @@
+# Container used on servers where nothing may be installed on the host (the build server).
+#  * scripts/lean runs Lean in it (LEAN_RUNNER=podman, the default on the build server);
+#  * scripts/agent runs the OpenCode proving agent in it, next to Lean and the lean-lsp MCP server.
+# Only programs live in the image. Toolchains (/opt/elan/toolchains), the download caches (/cache)
+# and the agent's home directory (/root) are bind-mounted from the host (LEAN_PODMAN_STATE), so a
+# Lean version bump does not require rebuilding the image.
+# scripts/lean tags the image with a hash of this file and rebuilds it when the file changes.
+FROM docker.io/library/ubuntu:24.04
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl git python3 less \
+ && rm -rf /var/lib/apt/lists/*
+
+ENV ELAN_HOME=/opt/elan \
+    UV_TOOL_DIR=/opt/uv-tools/lib \
+    UV_TOOL_BIN_DIR=/opt/uv-tools/bin \
+    PATH=/opt/elan/bin:/opt/uv-tools/bin:$PATH \
+    XDG_CACHE_HOME=/cache \
+    MATHLIB_CACHE_DIR=/cache/mathlib \
+    OPENCODE_DISABLE_AUTOUPDATE=1
+
+# Lean: elan only; it downloads the toolchain named in lean-toolchain on first use.
+RUN curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+      | sh -s -- -y --default-toolchain none --no-modify-path \
+ && elan --version
+
+# Agent tools (pinned; bump deliberately): OpenCode, uv, lean-lsp-mcp.
+ARG OPENCODE_VERSION=1.18.16
+ARG UV_VERSION=0.13.4
+ARG LEAN_LSP_MCP_VERSION=0.33.0
+RUN curl -fsSL "https://github.com/anomalyco/opencode/releases/download/v${OPENCODE_VERSION}/opencode-linux-x64.tar.gz" \
+      | tar -xz -C /usr/local/bin opencode \
+ && curl -fsSL "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-unknown-linux-gnu.tar.gz" \
+      | tar -xz --strip-components=1 -C /usr/local/bin \
+ && uv tool install --no-cache "lean-lsp-mcp==${LEAN_LSP_MCP_VERSION}" \
+ && opencode --version && uv --version && command -v lean-lsp-mcp
+
+WORKDIR /work

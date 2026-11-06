@@ -1,0 +1,298 @@
+#!/usr/bin/env bash
+# scripts/lean — run Lean/Lake work for this repository, on this machine or on the build server.
+#
+# A machine without a local Lean build (a "thin client", e.g. a laptop with little disk space)
+# transparently rsyncs the working tree to a mirror on the build server and runs there.
+# Run `scripts/lean help` for usage.
+set -uo pipefail
+
+# shellcheck source=scripts/lib.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+ROOT="$LP_ROOT"
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=10)
+
+usage() {
+  cat <<EOF
+Usage: scripts/lean <command> [args]
+
+  check FILE.lean...         Compile the files (building their project imports first).
+                             Prints errors, warnings and 'declaration uses sorry'.
+                             Exit code 0 = no errors.
+  axioms FILE.lean [DECL...] Print the axioms used. With DECLs (full names), only those;
+                             otherwise every top-level theorem in the file(s).
+                             Acceptable: propext, Classical.choice, Quot.sound.
+  build [TARGET...]          lake build (default: the whole LeanProofs library).
+                             Runs on the build server unless LEAN_BACKEND=local.
+  run CMD [ARG...]           Run any command at the repo root inside the Lean environment, e.g.
+                               scripts/lean run lake env lean Scratch/Try.lean
+                               scripts/lean run grep -rn "theorem wp_le" .lake/packages/pgcl/PGCL
+                               scripts/lean run lean4-skills-search-mathlib "tsum_le" name
+  sorries [PATH...]          List remaining sorries (text scan, always local, no Lean needed).
+  setup                      One-time per machine: Mathlib cache + build Aurora and this project.
+  where                      Show which machine each command would run on, and why.
+  sync                       Only push the working tree to the build-server mirror.
+  shell                      Interactive shell inside the Lean environment (for humans).
+
+Backend (override with LEAN_BACKEND=local|remote):
+  on the build server ($LEAN_REMOTE_HOST)    -> local
+  'build' on any other machine           -> remote (heavy work goes to the server)
+  local Lean build present (.lake)       -> local
+  otherwise (thin client)                -> remote
+
+Remote: $LEAN_REMOTE_HOST:~/$LEAN_REMOTE_DIR  (set LEAN_REMOTE_HOST / LEAN_REMOTE_DIR,
+        or put them in scripts/local.env)
+Runner: LEAN_RUNNER=native (elan on the host) or podman (container from scripts/container/;
+        default on the build server, where nothing is installed on the host)
+EOF
+}
+
+# ---------------------------------------------------------------- helpers
+
+# Path of $1 relative to the repo root (the file must exist); fails if it is outside the repo.
+relpath() {
+  local p="$1" dir abs
+  [ -e "$p" ] || { echo "no such file: $p" >&2; return 1; }
+  dir="$(cd "$(dirname "$p")" && pwd -P)" || return 1
+  abs="$dir/$(basename "$p")"
+  case "$abs" in
+    "$ROOT"/*) printf '%s\n' "${abs#"$ROOT"/}" ;;
+    *) echo "$p is not inside $ROOT" >&2; return 1 ;;
+  esac
+}
+
+# LeanProofs/Foo/Bar.lean -> LeanProofs.Foo.Bar (empty if the file is not part of the library)
+module_of() {
+  case "$1" in
+    LeanProofs.lean | LeanProofs/*.lean) local m="${1%.lean}"; printf '%s\n' "${m//\//.}" ;;
+    *) printf '\n' ;;
+  esac
+}
+
+# Drop warnings that Lake replays for already-built dependencies (Aurora, Mathlib, ...): they are
+# not about this repository and would only distract. LEAN_CHECK_RAW=1 shows everything.
+hide_dependency_logs() {
+  if [ -n "${LEAN_CHECK_RAW:-}" ]; then cat; return; fi
+  awk '
+    /^(⚠|✔|✖|ℹ) \[[0-9]+\/[0-9]+\] / {
+      skip = ($0 ~ / Replayed /) && ($0 !~ / Replayed (LeanProofs|Scratch)/)
+      if (skip) next
+    }
+    /^(Build completed|error: build failed|Some required targets)/ { skip = 0 }
+    !skip { print }
+  '
+}
+
+ensure_submodule() {
+  if [ ! -e "$LEAN4_PLUGIN_ROOT/bin" ] && git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+    echo "[scripts/lean] initialising git submodules (lean4-skills)" >&2
+    git -C "$ROOT" submodule update --init --recursive >&2
+  fi
+}
+
+# Refuse to run Lake before `setup`: Lake would otherwise compile Mathlib from source (hours).
+require_env() {
+  lp_env_ready || lp_die "no Lean build on $(hostname -s) yet (Mathlib cache missing).
+Run once (takes a while):  scripts/lean setup"
+}
+
+warn_toolchain_mismatch() {
+  local a="$ROOT/.lake/packages/pgcl/lean-toolchain"
+  if [ -f "$a" ] && [ "$(tr -d '[:space:]' <"$a")" != "$(tr -d '[:space:]' <"$ROOT/lean-toolchain")" ]; then
+    echo "WARNING: Aurora uses '$(cat "$a")' but lean-toolchain is '$(cat "$ROOT/lean-toolchain")'." >&2
+    echo "         Fix: cp .lake/packages/pgcl/lean-toolchain lean-toolchain  (then scripts/lean setup)" >&2
+  fi
+}
+
+choose_backend() {
+  if [ -n "${LEAN_BACKEND:-}" ]; then
+    case "$LEAN_BACKEND" in
+      local | remote) echo "$LEAN_BACKEND" ;;
+      *) lp_die "LEAN_BACKEND must be 'local' or 'remote', not '$LEAN_BACKEND'" ;;
+    esac
+    return
+  fi
+  if lp_on_server; then echo local; return; fi
+  if [ "$1" = build ]; then echo remote; return; fi
+  if lp_env_ready; then echo local; else echo remote; fi
+}
+
+# ---------------------------------------------------------------- remote execution
+
+remote_cd() { printf 'cd && cd -- %q' "$LEAN_REMOTE_DIR"; }
+
+remote_reachable() {
+  ssh "${SSH_OPTS[@]}" -o ConnectTimeout=5 "$LEAN_REMOTE_HOST" true >/dev/null 2>&1
+}
+
+remote_sync() {
+  ssh "${SSH_OPTS[@]}" "$LEAN_REMOTE_HOST" "cd && mkdir -p -- $(printf %q "$LEAN_REMOTE_DIR")" ||
+    lp_die "cannot reach '$LEAN_REMOTE_HOST' via ssh (is the ssh alias configured?)"
+  rsync -az --delete -e "ssh ${SSH_OPTS[*]}" \
+    --exclude='.lake/' --exclude='.git' --exclude='/scripts/local.env' \
+    --exclude='*.axiom_check_backup' \
+    "$ROOT/" "$LEAN_REMOTE_HOST:$LEAN_REMOTE_DIR/" ||
+    lp_die "rsync to $LEAN_REMOTE_HOST:$LEAN_REMOTE_DIR failed"
+}
+
+remote_exec() {
+  remote_sync
+  echo "[scripts/lean] running on $LEAN_REMOTE_HOST:~/$LEAN_REMOTE_DIR" >&2
+  local rc=0 tty=()
+  [ "$1" = shell ] && tty=(-t)
+  ssh ${tty[@]+"${tty[@]}"} "${SSH_OPTS[@]}" "$LEAN_REMOTE_HOST" \
+    "$(remote_cd) && LEAN_BACKEND=local bash scripts/lean $(printf '%q ' "$@")" || rc=$?
+  # Lake may have (re)written these (e.g. after `lake update`); bring them back so they get committed.
+  rsync -az --ignore-missing-args -e "ssh ${SSH_OPTS[*]}" \
+    "$LEAN_REMOTE_HOST:$LEAN_REMOTE_DIR/lake-manifest.json" \
+    "$LEAN_REMOTE_HOST:$LEAN_REMOTE_DIR/lean-toolchain" "$ROOT/" >/dev/null 2>&1 || true
+  return "$rc"
+}
+
+# ---------------------------------------------------------------- local implementations
+
+cmd_setup() {
+  command -v lake >/dev/null 2>&1 || lp_die "elan/lake not found on $(hostname -s).
+Install elan once (see README.md, 'Setting up a machine'):
+  curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+then re-run: scripts/lean setup"
+  echo "==> toolchain $(cat lean-toolchain)"
+  echo "==> downloading the Mathlib build cache (lake exe cache get)"
+  lake exe cache get || lp_die "lake exe cache get failed"
+  warn_toolchain_mismatch
+  echo "==> building Aurora (pgcl) and LeanProofs — the first time takes several minutes"
+  lake build
+}
+
+cmd_check() {
+  [ $# -ge 1 ] || lp_die "usage: scripts/lean check FILE.lean..."
+  local rc=0 f mod deps
+  for f in "$@"; do
+    case "$f" in *.lean) ;; *) lp_die "not a .lean file: $f" ;; esac
+    mod="$(module_of "$f")"
+    if [ -n "$mod" ]; then
+      echo "==> lake build +$mod"
+      lake build "+$mod" 2>&1 | hide_dependency_logs
+      [ "${PIPESTATUS[0]}" -eq 0 ] || rc=1
+    else
+      # Not part of the library (e.g. Scratch/): build its LeanProofs imports, then elaborate it.
+      deps="$(sed -n 's/^import[[:space:]]\{1,\}\(LeanProofs[^[:space:]]*\).*/+\1/p' "$f" | tr '\n' ' ')"
+      if [ -n "$deps" ]; then
+        # shellcheck disable=SC2086
+        lake build -q $deps 2>&1 | hide_dependency_logs
+        [ "${PIPESTATUS[0]}" -eq 0 ] || { rc=1; continue; }
+      fi
+      echo "==> lake env lean $f"
+      lake env lean "$f" || rc=1
+    fi
+  done
+  [ "$rc" -eq 0 ] && echo "==> OK (no errors)" || echo "==> FAILED (see errors above)"
+  return "$rc"
+}
+
+cmd_axioms() {
+  local files=() decls=() a out
+  for a in "$@"; do
+    case "$a" in *.lean) files+=("$a") ;; *) decls+=("$a") ;; esac
+  done
+  [ ${#files[@]} -ge 1 ] || lp_die "usage: scripts/lean axioms FILE.lean [FULL.DECL.NAME...]"
+  out="$(cmd_check "${files[@]}" 2>&1)" || { echo "$out"; lp_die "the file(s) do not compile; fix errors first"; }
+  if [ ${#decls[@]} -ge 1 ]; then
+    [ ${#files[@]} -eq 1 ] || lp_die "give exactly one file when naming declarations"
+    local mod tmp d
+    mod="$(module_of "${files[0]}")"
+    [ -n "$mod" ] || lp_die "naming declarations needs a file under LeanProofs/ (use without names for Scratch files)"
+    tmp="$(mktemp -d)"
+    { echo "import $mod"; for d in "${decls[@]}"; do echo "#print axioms $d"; done; } >"$tmp/Axioms.lean"
+    lake env lean "$tmp/Axioms.lean"
+    a=$?
+    rm -rf "$tmp"
+    return "$a"
+  fi
+  lean4-skills-check-axioms-inline "${files[@]}"
+}
+
+cmd_build() {
+  lake build "$@" 2>&1 | hide_dependency_logs
+  local rc=${PIPESTATUS[0]}
+  warn_toolchain_mismatch
+  return "$rc"
+}
+
+cmd_run() {
+  [ $# -ge 1 ] || lp_die "usage: scripts/lean run CMD [ARG...]"
+  "$@"
+}
+
+cmd_shell() {
+  echo "[scripts/lean] shell in the Lean environment at $ROOT ($(hostname -s)); exit to leave" >&2
+  exec bash -i
+}
+
+cmd_sorries() {
+  [ $# -ge 1 ] || set -- LeanProofs
+  if [ -f "$LEAN4_PLUGIN_ROOT/lib/scripts/sorry_analyzer.py" ]; then
+    python3 "$LEAN4_PLUGIN_ROOT/lib/scripts/sorry_analyzer.py" "$@" --format=summary --report-only
+  else
+    grep -rnw --include='*.lean' -e sorry -e admit "$@" || echo "no sorries"
+  fi
+}
+
+cmd_where() {
+  echo "repo root          : $ROOT"
+  echo "this machine       : $(hostname -s)$(lp_on_server && echo ' (the build server)')"
+  echo "local Lean build   : $(lp_env_ready && echo present || echo 'absent (thin client)')"
+  echo "Lean runs          : $LEAN_RUNNER$( [ "$LEAN_RUNNER" = podman ] && echo " (container, state in $LEAN_PODMAN_STATE)")"
+  echo "build server mirror: $LEAN_REMOTE_HOST:~/$LEAN_REMOTE_DIR"
+  echo "check/axioms/run   : $(choose_backend check)"
+  echo "build              : $(choose_backend build)"
+}
+
+# ---------------------------------------------------------------- dispatch
+
+cmd="${1:-help}"
+[ $# -gt 0 ] && shift
+
+case "$cmd" in
+  help | -h | --help) usage; exit 0 ;;
+  where) cmd_where; exit 0 ;;
+  sorries) cd "$ROOT" && cmd_sorries "$@"; exit $? ;;
+  sync) ensure_submodule; remote_sync && echo "synced to $LEAN_REMOTE_HOST:~/$LEAN_REMOTE_DIR"; exit $? ;;
+  setup | check | axioms | build | run | shell) ;;
+  *) lp_die "unknown command '$cmd' (see: scripts/lean help)" ;;
+esac
+
+# Make file arguments relative to the repo root, so they mean the same thing on the server.
+args=()
+case "$cmd" in
+  check | axioms)
+    for a in "$@"; do
+      if [[ "$a" == *.lean ]]; then
+        r="$(relpath "$a")" || exit 2
+        args+=("$r")
+      else
+        args+=("$a")
+      fi
+    done ;;
+  run) for a in "$@"; do args+=("${a//"$ROOT"\//}"); done ;;
+  *) args=("$@") ;;
+esac
+
+ensure_submodule
+backend="$(choose_backend "$cmd")"
+if [ "$backend" = remote ] && [ -z "${LEAN_BACKEND:-}" ] && lp_env_ready && ! remote_reachable; then
+  echo "[scripts/lean] $LEAN_REMOTE_HOST unreachable — running locally instead" >&2
+  backend=local
+fi
+
+if [ "$backend" = remote ]; then
+  remote_exec "$cmd" ${args[@]+"${args[@]}"}
+else
+  cd "$ROOT" || exit 2
+  lp_activate_env
+  if [ "$LEAN_RUNNER" = podman ] && [ -z "${LEAN_IN_CONTAINER:-}" ]; then
+    lp_podman_run -- bash scripts/lean "$cmd" ${args[@]+"${args[@]}"}
+    exit $?
+  fi
+  case "$cmd" in setup | shell) ;; *) require_env ;; esac
+  "cmd_$cmd" ${args[@]+"${args[@]}"}
+fi

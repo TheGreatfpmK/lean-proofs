@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Launcher for the lean-lsp-mcp server (https://github.com/oOo0oOo/lean-lsp-mcp), used by
+# opencode.json. It only starts on a machine with a local Lean build. On a thin client it exits
+# immediately, because `lake serve` there would start downloading and compiling Mathlib. In that
+# case the agent uses scripts/lean instead.
+set -u
+# shellcheck source=scripts/lib.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
+if ! lp_env_ready; then
+  echo "lean-lsp-mcp: no local Lean build in $LP_ROOT (thin client); use scripts/lean instead." >&2
+  exit 1
+fi
+lp_activate_env
+export LEAN_PROJECT_PATH="$LP_ROOT"
+cd "$LP_ROOT" || exit 1
+# Preinstalled in the container image; elsewhere fetched on demand by uvx.
+command -v lean-lsp-mcp >/dev/null 2>&1 && exec lean-lsp-mcp "$@"
+command -v uvx >/dev/null 2>&1 || {
+  echo "lean-lsp-mcp: 'uvx' not found; install uv (https://docs.astral.sh/uv/) to enable it." >&2
+  exit 1
+}
+exec uvx lean-lsp-mcp "$@"

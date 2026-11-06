@@ -1,0 +1,3 @@
+[submodule "vendor/lean4-skills"]
+	path = vendor/lean4-skills
+	url = https://github.com/cameronfreer/lean4-skills.git

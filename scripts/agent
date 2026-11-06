@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+# scripts/agent — run the OpenCode proving agent on the build server, inside the Lean container,
+# in a tmux session that survives disconnects. Run `scripts/agent help` for usage.
+#
+# Layout on the server (all under ~/disk2/lean-proofs by default):
+#   agent/        the agent's own git clone of this repo (with its own Lean build)
+#   agent-home/   the agent's home directory in the container (OpenCode sessions and settings)
+#   agent.env     API keys for the agent (mode 600), created by `scripts/agent key`
+#
+# Git flow: the agent only commits. On your machine, the clone is the git remote `bob`:
+#   git pull bob <branch>    fetch the agent's commits (review, then `git push` to GitHub yourself)
+#   git push bob <branch>    hand new statements to the agent (works while its tree is clean)
+set -uo pipefail
+LP_PROG=scripts/agent
+# shellcheck source=scripts/lib.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+ROOT="$LP_ROOT"
+
+LEAN_AGENT_DIR="${LEAN_AGENT_DIR:-disk2/lean-proofs/agent}"            # relative to remote ~
+LEAN_AGENT_ENV="${LEAN_AGENT_ENV:-disk2/lean-proofs/agent.env}"        # relative to remote ~
+LEAN_AGENT_SESSION="${LEAN_AGENT_SESSION:-lean-agent}"
+LEAN_AGENT_ENV_VARS="${LEAN_AGENT_ENV_VARS:-OSTRAVA_API_KEY}"          # copied by `key`
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=30 -o ServerAliveCountMax=10)
+
+usage() {
+  cat <<EOF
+Usage: scripts/agent <command> [args]
+
+  init            Create the agent's clone on $LEAN_REMOTE_HOST (~/$LEAN_AGENT_DIR) from your
+                  committed HEAD, add it as git remote 'bob', and build Lean there (~5 min).
+  key             Copy the API key(s) the agent needs ($LEAN_AGENT_ENV_VARS) from this shell
+                  to $LEAN_REMOTE_HOST:~/$LEAN_AGENT_ENV (readable only by you).
+  start [ARGS]    Start the agent in tmux session '$LEAN_AGENT_SESSION' on $LEAN_REMOTE_HOST and
+                  attach. ARGS go to opencode, e.g. 'start --continue'. Detach: Ctrl-b d.
+  start -d [ARGS] Start without attaching.
+  attach          Attach to the running agent.
+  stop            Stop the agent (ends the OpenCode process; sessions are kept for --continue).
+  status          Is the agent running? Its recent commits and uncommitted changes.
+  shell           Shell in the container at the agent's clone (debugging).
+  exec CMD...     Run a command in the agent's container, e.g. 'exec opencode mcp list'.
+
+Then, on this machine:  git pull bob <branch>   (review, then git push to GitHub yourself)
+                        git push bob <branch>   (give the agent new statements)
+EOF
+}
+
+# Run a shell snippet on the server (directly when we are on it).
+on_server() {
+  if lp_on_server; then bash -c "$1"; else ssh "${SSH_OPTS[@]}" "$LEAN_REMOTE_HOST" "$1"; fi
+}
+on_server_tty() {
+  if lp_on_server; then bash -c "$1"; else ssh -t "${SSH_OPTS[@]}" "$LEAN_REMOTE_HOST" "$1"; fi
+}
+q() { printf '%q' "$1"; }
+agent_cd() { printf 'cd && cd -- %q' "$LEAN_AGENT_DIR"; }
+
+cmd_init() {
+  git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null ||
+    lp_die "this repository has no commits yet; commit the setup first"
+  local branch name email origin url
+  branch="$(git -C "$ROOT" symbolic-ref --short HEAD)" || lp_die "not on a branch"
+  name="$(git -C "$ROOT" config user.name)"; email="$(git -C "$ROOT" config user.email)"
+  origin="$(git -C "$ROOT" remote get-url origin 2>/dev/null || true)"
+  [ -n "$(git -C "$ROOT" status --porcelain --untracked-files=no)" ] &&
+    echo "note: uncommitted changes here are not sent to the agent (only commits are)" >&2
+
+  echo "==> creating the agent clone at $LEAN_REMOTE_HOST:~/$LEAN_AGENT_DIR"
+  on_server "set -e; cd; d=$(q "$LEAN_AGENT_DIR")
+    if [ ! -d \"\$d/.git\" ]; then mkdir -p \"\$d\"; git init -q -b $(q "$branch") \"\$d\"; fi
+    cd \"\$d\"
+    git config receive.denyCurrentBranch updateInstead
+    git config user.name $(q "$name"); git config user.email $(q "$email")
+    if [ -n $(q "$origin") ]; then git remote remove origin 2>/dev/null || true; git remote add origin $(q "$origin"); fi" ||
+    lp_die "could not create the clone on $LEAN_REMOTE_HOST"
+
+  url="$LEAN_REMOTE_HOST:$LEAN_AGENT_DIR"
+  if git -C "$ROOT" remote get-url bob >/dev/null 2>&1; then
+    git -C "$ROOT" remote set-url bob "$url"
+  else
+    git -C "$ROOT" remote add bob "$url"
+  fi
+  echo "==> pushing $branch to the agent (git remote 'bob' = $url)"
+  git -C "$ROOT" push bob "$branch" || lp_die "git push bob $branch failed"
+
+  echo "==> checking out files, submodules and the Lean build on $LEAN_REMOTE_HOST"
+  on_server "set -e; $(agent_cd)
+    git checkout -q -f $(q "$branch") 2>/dev/null || git reset -q --hard
+    git submodule update --init --recursive
+    bash scripts/lean setup" || lp_die "setting up the agent clone failed"
+  on_server "cd && test -f $(q "$LEAN_AGENT_ENV")" ||
+    echo "next: scripts/agent key   (copies the API key to $LEAN_REMOTE_HOST)" >&2
+  echo "done. start the agent with: scripts/agent start"
+}
+
+cmd_key() {
+  local v content=""
+  for v in $LEAN_AGENT_ENV_VARS; do
+    [ -n "${!v:-}" ] || lp_die "$v is not set in this shell"
+    content+="$v=${!v}"$'\n'
+  done
+  printf '%s' "$content" | on_server "umask 077; cd; mkdir -p \"\$(dirname $(q "$LEAN_AGENT_ENV"))\"; cat > $(q "$LEAN_AGENT_ENV")" ||
+    lp_die "could not write $LEAN_REMOTE_HOST:~/$LEAN_AGENT_ENV"
+  echo "wrote $LEAN_AGENT_ENV_VARS to $LEAN_REMOTE_HOST:~/$LEAN_AGENT_ENV (mode 600)"
+}
+
+cmd_start() {
+  local detach=0
+  if [ "${1:-}" = -d ]; then detach=1; shift; fi
+  local inner
+  inner="$(agent_cd) && exec bash scripts/agent _run $(printf '%q ' "$@")"
+  on_server "cd && test -d $(q "$LEAN_AGENT_DIR")/.git" || lp_die "no agent clone yet; run: scripts/agent init"
+  on_server "tmux has-session -t $(q "$LEAN_AGENT_SESSION") 2>/dev/null || tmux new-session -d -s $(q "$LEAN_AGENT_SESSION") -x 200 -y 50 $(q "$inner")" ||
+    lp_die "could not start tmux session on $LEAN_REMOTE_HOST"
+  if [ "$detach" = 1 ] || ! [ -t 1 ]; then
+    echo "agent running in tmux session '$LEAN_AGENT_SESSION' on $LEAN_REMOTE_HOST (scripts/agent attach)"
+  else
+    cmd_attach
+  fi
+}
+
+cmd_attach() {
+  on_server_tty "tmux attach -t $(q "$LEAN_AGENT_SESSION")"
+}
+
+cmd_stop() {
+  on_server "tmux kill-session -t $(q "$LEAN_AGENT_SESSION")" && echo "stopped" || echo "not running"
+}
+
+cmd_status() {
+  on_server "if tmux has-session -t $(q "$LEAN_AGENT_SESSION") 2>/dev/null; then echo 'agent: running'; else echo 'agent: not running'; fi
+    $(agent_cd) 2>/dev/null || { echo 'no agent clone (scripts/agent init)'; exit 0; }
+    echo '--- recent commits'; git log --oneline -8
+    echo '--- uncommitted changes'; git status --short"
+}
+
+cmd_shell() {
+  on_server_tty "$(agent_cd) && bash scripts/agent _run_shell"
+}
+
+cmd_exec() {
+  [ $# -ge 1 ] || lp_die "usage: scripts/agent exec CMD [ARG...]"
+  on_server "$(agent_cd) && bash scripts/agent _exec $(printf '%q ' "$@")"
+}
+
+# ---- internal, executed on the server inside the agent clone
+
+agent_podman() {
+  local envfile="$HOME/$LEAN_AGENT_ENV" envopt=()
+  case "$LEAN_AGENT_ENV" in /*) envfile="$LEAN_AGENT_ENV" ;; esac
+  if [ -f "$envfile" ]; then envopt=(--env-file "$envfile"); else
+    echo "warning: $envfile missing; run 'scripts/agent key' on your machine" >&2
+  fi
+  mkdir -p "$LEAN_PODMAN_STATE/agent-home"
+  lp_podman_run -v "$LEAN_PODMAN_STATE/agent-home:/root" ${envopt[@]+"${envopt[@]}"} \
+    -e TERM="${TERM:-xterm-256color}" -e COLORTERM=truecolor -e LEAN_AGENT=1 -- "$@"
+}
+
+cmd__run() {
+  lp_env_ready || lp_die "the agent clone has no Lean build; run: scripts/agent init"
+  agent_podman opencode "$@"
+  local rc=$?
+  echo "opencode exited ($rc). Press Enter to close this tmux window." >&2
+  read -r _ || true
+}
+
+cmd__run_shell() { agent_podman bash -l; }
+
+cmd="${1:-help}"
+[ $# -gt 0 ] && shift
+case "$cmd" in
+  help | -h | --help) usage ;;
+  init | key | start | attach | stop | status | shell | exec) "cmd_$cmd" "$@" ;;
+  _run) cmd__run "$@" ;;
+  _exec) agent_podman "$@" ;;
+  _run_shell) cmd__run_shell ;;
+  *) lp_die "unknown command '$cmd' (see: scripts/agent help)" ;;
+esac

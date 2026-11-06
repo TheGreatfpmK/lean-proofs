@@ -1,0 +1,26 @@
+name = "LeanProofs"
+version = "0.1.0"
+keywords = ["math", "MDP", "pGCL", "probabilistic programs"]
+defaultTargets = ["LeanProofs"]
+
+[leanOptions]
+pp.unicode.fun = true        # pretty-print `fun a ↦ b`
+autoImplicit = false         # an unbound name in a statement is an error, never a silent new variable
+relaxedAutoImplicit = false
+
+# AuRoRA theory (https://aurora-dtu.github.io/theory/), Lake package `pgcl`.
+# Provides the libraries `MDP`, `PGCL`, `HeyVL`, `STDX`, `Paper` and, transitively, Mathlib.
+# Mathlib is deliberately NOT required directly: we inherit exactly the Mathlib revision Aurora
+# pins. (Tested 2026-11-05: Aurora does not compile against Mathlib v4.33.0-rc1, so a newer
+# Mathlib cannot simply be substituted.) The exact Aurora commit is locked in
+# lake-manifest.json; lean-toolchain must equal Aurora's (README.md, "Updating Aurora").
+[[require]]
+name = "pgcl"
+git = "https://github.com/aurora-dtu/theory.git"
+rev = "main"
+
+[[lean_lib]]
+name = "LeanProofs"
+# Build every file under LeanProofs/ (`.*` = the module and all submodules), so new files are
+# checked by `lake build` without having to be imported from LeanProofs.lean.
+globs = ["LeanProofs.*"]

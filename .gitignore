@@ -1,2 +1,12 @@
-# cache and other artifacts produced by Lean's Lake build tool
+# Lake build output and downloaded dependencies (Mathlib, Aurora, ...) — rebuilt per machine
 .lake/
+
+# Throwaway experiments (anything worth keeping goes into LeanProofs/)
+Scratch/*
+!Scratch/README.md
+
+# Per-machine settings for scripts/lean (remote host, mirror dir, ...)
+scripts/local.env
+
+# Left behind if the axiom checker is interrupted
+*.axiom_check_backup
