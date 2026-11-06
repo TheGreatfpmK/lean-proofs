@@ -39,7 +39,7 @@ theorem ReachProbN_le_one (n : ℕ) : M.ReachProbN 𝒮 T n s ≤ 1 := by
 
 /-- Reachability is a probability. -/
 theorem ReachProb_le_one : M.ReachProb 𝒮 T s ≤ 1 := by
-  sorry
+  exact iSup_le fun n ↦ ReachProbN_le_one 𝒮 T s n
 
 /-- Allowing more steps can only increase the probability of having reached `T`. -/
 theorem ReachProbN_mono : Monotone fun n ↦ M.ReachProbN 𝒮 T n s := by
