@@ -35,6 +35,9 @@ Usage: scripts/agent <command> [args]
   start -d [ARGS] Start without attaching.
   attach          Attach to the running agent.
   stop            Stop the agent (ends the OpenCode process; sessions are kept for --continue).
+  restart [-d] [ARGS]
+                  Stop the agent (if running) and start it again, e.g. after 'git push bob' changed
+                  AGENTS.md or the slash commands. 'restart --continue' resumes the last session.
   status          Is the agent running? Its recent commits and uncommitted changes.
   shell           Shell in the container at the agent's clone (debugging).
   exec CMD...     Run a command in the agent's container, e.g. 'exec opencode mcp list'.
@@ -107,7 +110,9 @@ cmd_start() {
   local detach=0
   if [ "${1:-}" = -d ]; then detach=1; shift; fi
   local inner
-  inner="$(agent_cd) && exec bash scripts/agent _run $(printf '%q ' "$@")"
+  # Pass the settings explicitly: the tmux command on the server does not inherit this shell's
+  # environment, and the session name decides the container name that `stop` waits for.
+  inner="$(agent_cd) && LEAN_AGENT_SESSION=$(q "$LEAN_AGENT_SESSION") LEAN_AGENT_ENV=$(q "$LEAN_AGENT_ENV") exec bash scripts/agent _run $(printf '%q ' "$@")"
   on_server "cd && test -d $(q "$LEAN_AGENT_DIR")/.git" || lp_die "no agent clone yet; run: scripts/agent init"
   on_server "tmux has-session -t $(q "$LEAN_AGENT_SESSION") 2>/dev/null || tmux new-session -d -s $(q "$LEAN_AGENT_SESSION") -x 200 -y 50 $(q "$inner")" ||
     lp_die "could not start tmux session on $LEAN_REMOTE_HOST"
@@ -123,7 +128,18 @@ cmd_attach() {
 }
 
 cmd_stop() {
-  on_server "tmux kill-session -t $(q "$LEAN_AGENT_SESSION")" && echo "stopped" || echo "not running"
+  # Kill the tmux session, then wait until the agent's container has really exited, so that a
+  # following start never runs two OpenCode instances on the same state directory.
+  on_server "tmux kill-session -t $(q "$LEAN_AGENT_SESSION") 2>/dev/null && was=1 || was=0
+    c=$(q "$(agent_container)")
+    for _ in \$(seq 1 30); do podman container exists \"\$c\" || break; sleep 1; done
+    podman container exists \"\$c\" && podman rm -f \"\$c\" >/dev/null
+    [ \"\$was\" = 1 ] && echo stopped || echo 'not running'"
+}
+
+cmd_restart() {
+  cmd_stop
+  cmd_start "$@"
 }
 
 cmd_status() {
@@ -144,6 +160,10 @@ cmd_exec() {
 
 # ---- internal, executed on the server inside the agent clone
 
+agent_container() { printf 'lean-agent-%s\n' "$LEAN_AGENT_SESSION"; }
+
+AGENT_PODMAN_OPTS=()
+
 agent_podman() {
   local envfile="$HOME/$LEAN_AGENT_ENV" envopt=()
   case "$LEAN_AGENT_ENV" in /*) envfile="$LEAN_AGENT_ENV" ;; esac
@@ -152,11 +172,14 @@ agent_podman() {
   fi
   mkdir -p "$LEAN_PODMAN_STATE/agent-home"
   lp_podman_run -v "$LEAN_PODMAN_STATE/agent-home:/root" ${envopt[@]+"${envopt[@]}"} \
+    ${AGENT_PODMAN_OPTS[@]+"${AGENT_PODMAN_OPTS[@]}"} \
     -e TERM="${TERM:-xterm-256color}" -e COLORTERM=truecolor -e LEAN_AGENT=1 -- "$@"
 }
 
 cmd__run() {
   lp_env_ready || lp_die "the agent clone has no Lean build; run: scripts/agent init"
+  # A fixed name lets `stop` wait for this container to exit (--replace clears a stale one).
+  AGENT_PODMAN_OPTS=(--name "$(agent_container)" --replace)
   agent_podman opencode "$@"
   local rc=$?
   echo "opencode exited ($rc). Press Enter to close this tmux window." >&2
@@ -169,7 +192,7 @@ cmd="${1:-help}"
 [ $# -gt 0 ] && shift
 case "$cmd" in
   help | -h | --help) usage ;;
-  init | key | start | attach | stop | status | shell | exec) "cmd_$cmd" "$@" ;;
+  init | key | start | attach | stop | restart | status | shell | exec) "cmd_$cmd" "$@" ;;
   _run) cmd__run "$@" ;;
   _exec) agent_podman "$@" ;;
   _run_shell) cmd__run_shell ;;

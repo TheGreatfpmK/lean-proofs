@@ -106,6 +106,7 @@ scripts/agent key        # once: copies $OSTRAVA_API_KEY to bob (~/disk2/lean-pr
 scripts/agent start      # start or attach (Ctrl-b d detaches; `start -d` starts without attaching)
 scripts/agent status     # running? recent commits, uncommitted changes
 scripts/agent stop       # end the session; `scripts/agent start --continue` resumes it later
+scripts/agent restart    # stop + start, e.g. after `git push bob` changed AGENTS.md or commands
 ```
 
 On first start, choose your model with `/models` (OpenCode remembers it in

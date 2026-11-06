@@ -58,7 +58,12 @@ follow `AGENTS.md` sections 4–6: statements are fixed, no `sorry` or axioms, a
     come out with `git pull bob main`.
   - API key: `~/disk2/lean-proofs/agent.env` (mode 600, written by `scripts/agent key`).
   - OpenCode state: `~/disk2/lean-proofs/agent-home`, mounted as `/root`.
-  - Commands: `init`, `key`, `start [-d]`, `attach`, `stop`, `status`, `exec CMD`, `shell`.
+  - Commands: `init`, `key`, `start [-d]`, `attach`, `stop`, `restart [-d]`, `status`,
+    `exec CMD`, `shell`.
+  - The agent's container is named `lean-agent-<session>`, and `stop` waits for it to exit.
+    The tmux command on bob does not inherit the laptop's environment, so `start` passes
+    `LEAN_AGENT_SESSION`/`LEAN_AGENT_ENV` explicitly. Without that, a test session once got the
+    default name, and `--replace` could have killed the real agent.
   - `LEAN_AGENT_DIR`/`LEAN_AGENT_SESSION` select another clone or session (parallel agents,
     tests).
 - **Container image:** tagged `localhost/lean-proofs-env:<hash of Containerfile>` and rebuilt
