@@ -57,4 +57,29 @@ theorem geo_le_one (O : Optimization) :
     wp[O]⟦@geo⟧ 0 ≤ fun σ ↦ if 0 < σ "x" then 1 else 0 := by
   sorry
 
+/-- Counterexample to **Test 6**: at the constant state `x = 1`, the lower bound `3 / 2`
+contradicts the claimed upper bound `1`. -/
+theorem geo_le_one_counterexample :
+    ∃ σ : State Γg, ¬ wp[𝒟]⟦@geo⟧ 0 σ ≤ if 0 < σ "x" then (1 : ENNReal) else 0 := by
+  let σ : State Γg := fun _ ↦ 1
+  refine ⟨σ, ?_⟩
+  have hlower := geo_ge_three_halves 𝒟 σ
+  have hx : 0 < σ "x" := by simp [σ]
+  simp only [hx, if_true] at hlower ⊢
+  intro hupper
+  have hfalse := hlower.trans hupper
+  have hthree : (3 / 2 : ENNReal) = 1 + 2⁻¹ := by
+    rw [div_eq_mul_inv]
+    calc
+      3 * (2 : ENNReal)⁻¹ = 2⁻¹ + 2 * 2⁻¹ := by ring
+      _ = 2⁻¹ + 1 := by rw [ENNReal.mul_inv_cancel] <;> norm_num
+      _ = 1 + 2⁻¹ := add_comm _ _
+  rw [hthree] at hfalse
+  exact (not_le_of_gt (ENNReal.lt_add_right (by norm_num) (by norm_num))) hfalse
+
+/-- Salvage of **Test 6** with the correct upper bound `2`, already established as Test 4. -/
+theorem geo_le_one_salvaged (O : Optimization) :
+    wp[O]⟦@geo⟧ 0 ≤ fun σ ↦ if 0 < σ "x" then 2 else 0 := by
+  exact geo_le_two O
+
 end LeanProofs.AgentTest
