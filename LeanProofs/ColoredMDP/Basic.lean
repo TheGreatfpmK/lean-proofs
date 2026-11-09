@@ -19,11 +19,20 @@ variable {State Act Θ : Type*} (C : ColoredMDP State Act Θ) {θ : Θ} (hθ : �
 /-- `C[{θ}]` is a Markov chain: in every state, the only available action is the one `θ`
 selects. -/
 theorem act_inducedMC (s : State) : (C.inducedMC hθ).act s = {C.action hθ s} := by
-  sorry
+  classical
+  ext α
+  simp only [MDP.act, inducedMC, induced, Set.mem_setOf_eq, Set.mem_singleton_iff,
+    Set.singleton_inter_nonempty]
+  split_ifs with hκ
+  · exact ⟨fun hact ↦ C.action_unique hθ hact hκ, fun h ↦ h ▸ (C.action_spec hθ s).1⟩
+  · simp only [Option.isSome_none, Bool.false_eq_true, false_iff]
+    exact fun h ↦ hκ (h ▸ (C.action_spec hθ s).2)
 
 /-- `C[{θ}]` is a Markov chain in the sense of `MDP.IsMarkovChain`. -/
 theorem isMarkovChain_inducedMC : (C.inducedMC hθ).IsMarkovChain := by
-  sorry
+  refine ⟨fun s ↦ ?_⟩
+  rw [C.act_inducedMC hθ s]
+  simp
 
 /-- `C.reachProb` is the minimal reachability probability of `C[{θ}]`; on a Markov chain this
 is its only value. -/
