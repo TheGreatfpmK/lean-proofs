@@ -38,13 +38,18 @@ theorem isMarkovChain_inducedMC : (C.inducedMC hθ).IsMarkovChain := by
 is its only value. -/
 theorem reachProb_eq_Pmin (T : Set State) (s : State) :
     C.reachProb hθ T s = (C.inducedMC hθ).Pmin T s := by
-  sorry
+  exact le_antisymm
+    (le_iInf fun ℒ ↦ (C.isMarkovChain_inducedMC hθ).scheduler_eq
+      (C.inducedMC hθ).defaultPolicy ℒ ▸ le_rfl)
+    (iInf_le _ (C.inducedMC hθ).defaultPolicy)
 
 /-- `C.reachProb` is the maximal reachability probability of `C[{θ}]`; on a Markov chain this
 is its only value. -/
 theorem reachProb_eq_Pmax (T : Set State) (s : State) :
     C.reachProb hθ T s = (C.inducedMC hθ).Pmax T s := by
-  sorry
+  calc
+    C.reachProb hθ T s = (C.inducedMC hθ).Pmin T s := C.reachProb_eq_Pmin hθ T s
+    _ = (C.inducedMC hθ).Pmax T s := (C.isMarkovChain_inducedMC hθ).Pmin_eq_Pmax T s
 
 /-- `C.expCost` is the minimal expected total cost of `C[{θ}]`. -/
 theorem expCost_eq_Vmin (c : C.M.Costs) (s : State) :
