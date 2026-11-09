@@ -42,7 +42,7 @@ theorem ReachProb_le_one : M.ReachProb 𝒮 T s ≤ 1 := by
   exact iSup_le fun n ↦ ReachProbN_le_one 𝒮 T s n
 
 /-- One additional step preserves the mass of paths that have already reached `T`. -/
-private theorem ReachProbN_le_succ (n : ℕ) :
+theorem ReachProbN_le_succ (n : ℕ) :
     M.ReachProbN 𝒮 T n s ≤ M.ReachProbN 𝒮 T (n + 1) s := by
   classical
   simp only [ReachProbN]
@@ -142,7 +142,7 @@ end IsMarkovChain
 open scoped Classical in
 /-- Specializing a memoryless scheduler does not change probabilities of paths with the
 prescribed first state. -/
-private theorem prob_specialize_markovian (ℒ : 𝔏[M]) (s : State) (s' : M.succs_univ s)
+theorem prob_specialize_markovian (ℒ : 𝔏[M]) (s : State) (s' : M.succs_univ s)
     (n : ℕ) (π : Path[M,s',=n+1]) :
     π.val.Prob (ℒ.toScheduler[s ↦ s']) = π.val.Prob ℒ := by
   have hsched : ∀ i : Fin (‖π.val‖ - 1),
@@ -157,7 +157,7 @@ private theorem prob_specialize_markovian (ℒ : 𝔏[M]) (s : State) (s' : M.su
 
 open scoped Classical in
 /-- Bounded reachability in zero steps is the target's indicator function. -/
-private theorem ReachProbN_zero (ℒ : 𝔏[M]) (T : Set State) (s : State) :
+theorem ReachProbN_zero (ℒ : 𝔏[M]) (T : Set State) (s : State) :
     M.ReachProbN ℒ T 0 s = if s ∈ T then 1 else 0 := by
   simp [ReachProbN]
 
@@ -170,7 +170,7 @@ private theorem hit_prepend_iff (T : Set State) (s : State) (hs : s ∉ T)
 
 open scoped Classical in
 /-- One-step Bellman recurrence for bounded reachability under a memoryless policy. -/
-private theorem ReachProbN_succ (ℒ : 𝔏[M]) (T : Set State) (n : ℕ) (s : State) :
+theorem ReachProbN_succ (ℒ : 𝔏[M]) (T : Set State) (n : ℕ) (s : State) :
     M.ReachProbN ℒ T (n + 1) s =
       if s ∈ T then 1 else M.Φf s (ℒ {s}) (fun s' ↦ M.ReachProbN ℒ T n s') := by
   by_cases hs : s ∈ T
@@ -243,7 +243,7 @@ private theorem ReachProbN_succ (ℒ : 𝔏[M]) (T : Set State) (n : ℕ) (s : S
 open OmegaCompletePartialOrder
 
 /-- The reachability Bellman operator is ω-Scott continuous. -/
-private theorem reachΦℒ_ωScottContinuous (ℒ : 𝔏[M]) (T : Set State) :
+theorem reachΦℒ_ωScottContinuous (ℒ : 𝔏[M]) (T : Set State) :
     ωScottContinuous (M.reachΦℒ ℒ T) := by
   refine ωScottContinuous.of_map_ωSup_of_orderHom fun c ↦ funext fun s ↦ ?_
   by_cases hs : s ∈ T
@@ -252,7 +252,7 @@ private theorem reachΦℒ_ωScottContinuous (ℒ : 𝔏[M]) (T : Set State) :
       (Φf_ωScottContinuous (M := M) (s := s) (a := ℒ {s})).map_ωSup c
 
 /-- Bounded reachability consists exactly of the nonzero Kleene iterates from `⊥`. -/
-private theorem ReachProbN_eq_iterate (ℒ : 𝔏[M]) (T : Set State) (n : ℕ) :
+theorem ReachProbN_eq_iterate (ℒ : 𝔏[M]) (T : Set State) (n : ℕ) :
     (fun s ↦ M.ReachProbN ℒ T n s) = (M.reachΦℒ ℒ T)^[n + 1] ⊥ := by
   induction n with
   | zero => funext s; simp [ReachProbN_zero, reachΦℒ, Φf]

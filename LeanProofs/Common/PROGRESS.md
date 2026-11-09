@@ -9,6 +9,7 @@
 | JAIR §2.1.2 | `MDP.IsMarkovChain` | MDPValues.lean | defined | one action per state |
 | — | `MDP.IsMarkovChain.scheduler_eq` | MDPValuesLemmas.lean | proved | an MC has only one scheduler |
 | — | `MDP.IsMarkovChain.Pmin_eq_Pmax`, `MDP.IsMarkovChain.Vmin_eq_Vmax` | MDPValuesLemmas.lean | proved | min = max on an MC |
+| API | `MDP.ReachProbN_zero`, `MDP.ReachProbN_succ` (one-step Bellman recurrence), `MDP.ReachProbN_le_succ`, `MDP.ReachProbN_eq_iterate` (`ReachProbN n = reachΦℒ^[n+1] ⊥`), `MDP.reachΦℒ_ωScottContinuous`, `MDP.prob_specialize_markovian` | MDPValuesLemmas.lean | proved | helpers from the agent's proof, made public for reuse |
 | Baier–Katoen Thm. 10.15 | `MDP.ReachProb_eq_lfp` | MDPValuesLemmas.lean | proved | Bellman characterization; validates the definition |
 
 Status: stated (has `sorry`, ready to prove) · in progress · proved · blocked · false
@@ -30,3 +31,6 @@ Status: stated (has `sorry`, ready to prove) · in progress · proved · blocked
   warnings; the file has zero sorries. Every target's axiom report contains only `propext`,
   `Classical.choice`, and `Quot.sound`. `scripts/lean build` passed all 2086 jobs (only unrelated
   pre-existing sorry warnings elsewhere).
+
+### 2026-11-10 (overseer)
+- Made six of the agent's helper lemmas public (listed in the API row above); `hit_prepend_iff` stays private.
