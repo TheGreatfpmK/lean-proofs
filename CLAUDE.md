@@ -167,6 +167,11 @@ follow `AGENTS.md` sections 4–6: statements are fixed, no `sorry` or axioms, a
     was left clean.
   - Two issues, now addressed in `.opencode/commands/autoprove.md`: it wasted 3 cycles on the
     already-refuted target, and it added an unrequested "salvaged" variant.
+- First real `/autoprove` run (2026-11-06, `Common/MDPValuesLemmas.lean`, kimi-k3.1-pro on bob):
+  10/10 targets proved, including the Bellman characterization `ReachProb_eq_lfp`, which
+  validates the reachability definition. 91 min, 209 tool calls, about 338k input and 30k
+  output tokens, 8 cycles with none stuck, and a clean tracker stop. Statements unchanged,
+  7 `private` helpers, standard axioms only.
 
 ## Open items
 
