@@ -54,12 +54,16 @@ theorem reachProb_eq_Pmax (T : Set State) (s : State) :
 /-- `C.expCost` is the minimal expected total cost of `C[{θ}]`. -/
 theorem expCost_eq_Vmin (c : C.M.Costs) (s : State) :
     C.expCost hθ c s = (C.inducedMC hθ).Vmin c s := by
-  sorry
+  exact le_antisymm
+    (le_iInf fun ℒ ↦ (C.isMarkovChain_inducedMC hθ).scheduler_eq
+      (C.inducedMC hθ).defaultPolicy ℒ ▸ le_rfl)
+    (iInf_le _ (C.inducedMC hθ).defaultPolicy)
 
 /-- `C.expCost` is the maximal expected total cost of `C[{θ}]`. -/
 theorem expCost_eq_Vmax (c : C.M.Costs) (s : State) :
     C.expCost hθ c s = (C.inducedMC hθ).Vmax c s := by
-  sorry
+  exact (C.expCost_eq_Vmin hθ c s).trans
+    (MDP.IsMarkovChain.Vmin_eq_Vmax s (C.isMarkovChain_inducedMC hθ) c)
 
 /-- The expected cost (within `n` steps) of the induced Markov chain `C[{θ}]`, under any of its
 schedulers, equals that of the underlying MDP under the consistent policy of `θ`. -/
