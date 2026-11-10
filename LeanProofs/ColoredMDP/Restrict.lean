@@ -88,6 +88,6 @@ theorem restrict_reachProb {θ : Θ} (hθ : θ ∈ η) (T : Set State) (s : Stat
 /-- For `θ ∈ η`, the expected total cost of `θ`'s Markov chain is the same in `C_η` as in `C`. -/
 theorem restrict_expCost {θ : Θ} (hθ : θ ∈ η) (c : C.M.Costs) (s : State) :
     (C.restrict η hη hne).expCost hθ c s = C.expCost (hη hθ) c s := by
-  sorry
+  rw [expCost, expCost, C.restrict_inducedMC η hη hne hθ]
 
 end LeanProofs.ColoredMDP

@@ -17,15 +17,25 @@ shared colored-MDP foundations, reused by the paper projects.
 | JAIR §3.1 | `LeanProofs.ColoredMDP.EC_inducedMC` | Basic.lean | proved | `C[{θ}]` behaves like `M` under `θ`'s policy (expected cost) |
 | JAIR §3.1 | `LeanProofs.ColoredMDP.ReachProbN_inducedMC` | Basic.lean | proved | same, bounded reachability |
 | arXiv Thm. 5 proof | `LeanProofs.ColoredMDP.restrict` | Restrict.lean | defined | `C_η = (C[η], η, κ)`, `C` restricted to `η` |
-| — | `ColoredMDP.mem_act_of_mem_act_induced`, `ColoredMDP.action_mem_act_induced` | Restrict.lean | stated | actions of `C[η]` vs. `C.M` |
-| — | `ColoredMDP.existsUnique_act_induced` | Restrict.lean | stated | makes `restrict` a colored MDP (used by its definition) |
-| arXiv Thm. 5 proof | `ColoredMDP.restrict_induced` | Restrict.lean | stated | `C_η[η'] = C[η']` for `η' ⊆ η` |
-| — | `ColoredMDP.restrict_inducedMC`, `restrict_reachProb`, `restrict_expCost` | Restrict.lean | stated | `θ ∈ η` has the same chain and values in `C_η` and `C` |
+| — | `ColoredMDP.mem_act_of_mem_act_induced`, `ColoredMDP.action_mem_act_induced` | Restrict.lean | proved | actions of `C[η]` vs. `C.M` |
+| — | `ColoredMDP.existsUnique_act_induced` | Restrict.lean | proved | makes `restrict` a colored MDP (used by its definition) |
+| arXiv Thm. 5 proof | `ColoredMDP.restrict_induced` | Restrict.lean | proved | `C_η[η'] = C[η']` for `η' ⊆ η` |
+| — | `ColoredMDP.restrict_inducedMC`, `restrict_reachProb`, `restrict_expCost` | Restrict.lean | proved | `θ ∈ η` has the same chain and values in `C_η` and `C` |
 | API | `ColoredMDP.toUnderlying`, `toInduced`, `boundedToUnderlying`, `boundedToInduced` (path maps between `C[{θ}]` and `M`); `toUnderlying_prob` (probability preserved), `toUnderlying_take`; `scheduler_eq_action` (every scheduler of `C[{θ}]` picks θ's action); `inducedMC_P_action` (transition probabilities agree); `tsum_inducedMC` (transfers any path sum between `C[{θ}]` and `M`) | Basic.lean | proved | helpers from the agent's proof, made public for reuse |
 
 Status: stated (has `sorry`, ready to prove) · in progress · proved · blocked · false
 
 ## Log
+### 2026-11-10 (kimi-k3.1-pro, autoprove Restrict.lean)
+- Proved all seven Restrict.lean targets. Action membership follows by unfolding `induced`; unique
+  selection then follows from `action_unique`. `restrict_induced` compares transition functions,
+  using `η' ⊆ η` to match the guards. The chain equality is its singleton specialization, and the
+  reachability and expected-cost equalities rewrite by it. No statements or definitions changed.
+- Validation: `scripts/lean check LeanProofs/ColoredMDP/Restrict.lean` reports no errors or
+  sorries; all seven targets use only standard axioms; `scripts/lean build` succeeds. The
+  whole-project build reports only pre-existing sorries outside this target, in
+  AgentTest/Loop.lean and SMPMC_AAAI_2026/Abstraction.lean.
+
 ### 2026-11-10 (kimi-k3.1-pro)
 - Proved all eight Basic.lean targets. The action and Markov-chain facts use the induced `P`
   definition and `action_unique`. The four extrema identities follow from
