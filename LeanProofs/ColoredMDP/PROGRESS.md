@@ -16,6 +16,7 @@ shared colored-MDP foundations, reused by the paper projects.
 | — | `ColoredMDP.reachProb_eq_Pmin/Pmax`, `ColoredMDP.expCost_eq_Vmin/Vmax` | Basic.lean | proved | the chain's value is its min = max |
 | JAIR §3.1 | `LeanProofs.ColoredMDP.EC_inducedMC` | Basic.lean | proved | `C[{θ}]` behaves like `M` under `θ`'s policy (expected cost) |
 | JAIR §3.1 | `LeanProofs.ColoredMDP.ReachProbN_inducedMC` | Basic.lean | proved | same, bounded reachability |
+| API | `ColoredMDP.toUnderlying`, `toInduced`, `boundedToUnderlying`, `boundedToInduced` (path maps between `C[{θ}]` and `M`); `toUnderlying_prob` (probability preserved), `toUnderlying_take`; `scheduler_eq_action` (every scheduler of `C[{θ}]` picks θ's action); `inducedMC_P_action` (transition probabilities agree); `tsum_inducedMC` (transfers any path sum between `C[{θ}]` and `M`) | Basic.lean | proved | helpers from the agent's proof, made public for reuse |
 
 Status: stated (has `sorry`, ready to prove) · in progress · proved · blocked · false
 
@@ -35,3 +36,6 @@ Status: stated (has `sorry`, ready to prove) · in progress · proved · blocked
 ### 2026-11-06 (setup)
 - Definitions written and checked to compile. Basic lemmas stated: they carry the real content
   of JAIR Theorem 1 (`LeanProofs/OracleGuided/Theorem1.lean`).
+
+### 2026-11-10 (overseer)
+- Made the nine path-transfer helpers public (API row above).

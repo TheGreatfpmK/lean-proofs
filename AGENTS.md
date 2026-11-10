@@ -130,8 +130,13 @@ scripts/lean               the only way to run Lean (section 1)
 **Targets vs. helpers.** The *target statements* of a task are the declarations the user points
 you at, or, if the user names a file or project, the `sorry`ed declarations listed in its
 `PROGRESS.md`. Their statements are fixed. You may add *helper lemmas* freely. Give them names
-and docstrings. Put general ones in `LeanProofs/Common/` and the rest next to their use, or mark
-them `private`.
+and docstrings, and put general ones in `LeanProofs/Common/`.
+
+**Keep reusable helpers public.** Helpers are the API later proofs build on. Keep public every
+helper that states a general fact about the repo's definitions: recurrences, transfer or
+correspondence lemmas, maps between path types, continuity, base cases. Mark a helper `private`
+only if it is a narrow step of one proof, with an awkward statement (for example, one that
+contains a proof term). List the public helpers in an "API" row of `PROGRESS.md`.
 
 ## 4. Workflow for a proving task
 
