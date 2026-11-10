@@ -42,13 +42,19 @@ variable {State Act Θ : Type*} (C : ColoredMDP State Act Θ)
 family `η` has expected cost at most the maximal expected cost of the induced MDP `C[η]`. -/
 theorem expCost_le_Vmax_induced {θ : Θ} (hθ : θ ∈ η) (c : C.M.Costs) (s : State) :
     C.expCost (hη hθ) c s ≤ (C.induced η hη hne).Vmax c s := by
-  sorry
+  let D := C.restrict η hη hne
+  have hcost := LeanProofs.OracleGuided_JAIR_2025.theorem1_cost D hne c s
+  rw [← C.restrict_expCost η hη hne hθ c s]
+  exact (le_iSup (fun θ' : D.V ↦ D.expCost θ'.2 c s) ⟨θ, hθ⟩).trans hcost.2.2
 
 /-- **Abstraction soundness, lower bound** (expected total cost). Every Markov chain of the
 family `η` has expected cost at least the minimal expected cost of the induced MDP `C[η]`. -/
 theorem Vmin_induced_le_expCost {θ : Θ} (hθ : θ ∈ η) (c : C.M.Costs) (s : State) :
     (C.induced η hη hne).Vmin c s ≤ C.expCost (hη hθ) c s := by
-  sorry
+  let D := C.restrict η hη hne
+  have hcost := LeanProofs.OracleGuided_JAIR_2025.theorem1_cost D hne c s
+  rw [← C.restrict_expCost η hη hne hθ c s]
+  exact hcost.1.trans (iInf_le (fun θ' : D.V ↦ D.expCost θ'.2 c s) ⟨θ, hθ⟩)
 
 /-- **Abstraction soundness, upper bound** (reachability). -/
 theorem reachProb_le_Pmax_induced {θ : Θ} (hθ : θ ∈ η) (T : Set State) (s : State) :
