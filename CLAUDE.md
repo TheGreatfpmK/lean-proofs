@@ -172,11 +172,18 @@ follow `AGENTS.md` sections 4–6: statements are fixed, no `sorry` or axioms, a
   validates the reachability definition. 91 min, 209 tool calls, about 338k input and 30k
   output tokens, 8 cycles with none stuck, and a clean tracker stop. Statements unchanged,
   7 `private` helpers, standard axioms only.
+- `ColoredMDP/Basic.lean` (2026-11-10): 8/8 proved in 72 min, including the path-transfer
+  lemmas `EC_inducedMC`/`ReachProbN_inducedMC`. It again made every helper `private`;
+  `AGENTS.md` §3 now requires reusable helpers to be public, with an "API" row in
+  `PROGRESS.md`.
+- `OracleGuided/Theorem1.lean` (2026-11-10): **JAIR Theorem 1 proved** in both variants in
+  14 min, following the paper's Proof 1 (consistent policies are a subset of all policies). After
+  this, the only `sorry` in the project is the deliberately false `AgentTest.geo_le_one`.
 
 ## Open items
 
-- The bob agent works end to end with a plain prompt. Not yet tested: `/autoprove` (the lean4
-  skill's cycle-tracker protocol), a laptop agent session, and harder statements.
+- The bob agent works end to end, both with plain prompts and with `/autoprove`, including
+  hard statements (path transfer, Bellman fixed points). Not yet tested: a laptop agent session.
 - The user chose ostrava/kimi-k3.1-pro on bob (stored in `agent-home`). `opencode.json` sets no
   default model yet. The push policy is to be refined; for now, agents commit and the user
   pushes.
