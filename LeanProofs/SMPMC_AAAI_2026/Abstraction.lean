@@ -59,12 +59,18 @@ theorem Vmin_induced_le_expCost {θ : Θ} (hθ : θ ∈ η) (c : C.M.Costs) (s :
 /-- **Abstraction soundness, upper bound** (reachability). -/
 theorem reachProb_le_Pmax_induced {θ : Θ} (hθ : θ ∈ η) (T : Set State) (s : State) :
     C.reachProb (hη hθ) T s ≤ (C.induced η hη hne).Pmax T s := by
-  sorry
+  let D := C.restrict η hη hne
+  have hreach := LeanProofs.OracleGuided_JAIR_2025.theorem1_reach D hne T s
+  rw [← C.restrict_reachProb η hη hne hθ T s]
+  exact (le_iSup (fun θ' : D.V ↦ D.reachProb θ'.2 T s) ⟨θ, hθ⟩).trans hreach.2.2
 
 /-- **Abstraction soundness, lower bound** (reachability). -/
 theorem Pmin_induced_le_reachProb {θ : Θ} (hθ : θ ∈ η) (T : Set State) (s : State) :
     (C.induced η hη hne).Pmin T s ≤ C.reachProb (hη hθ) T s := by
-  sorry
+  let D := C.restrict η hη hne
+  have hreach := LeanProofs.OracleGuided_JAIR_2025.theorem1_reach D hne T s
+  rw [← C.restrict_reachProb η hη hne hθ T s]
+  exact hreach.1.trans (iInf_le (fun θ' : D.V ↦ D.reachProb θ'.2 T s) ⟨θ, hθ⟩)
 
 /-- **arXiv:2511.08078, Theorem 5** (semantic core, `viable` case). If the maximal expected cost
 of the abstraction `C[η]` is below the threshold `ν`, then every Markov chain of the family `η`
