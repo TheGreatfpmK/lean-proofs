@@ -1,11 +1,11 @@
 import LeanProofs.ColoredMDP.Restrict
-import LeanProofs.OracleGuided.Theorem1
+import LeanProofs.OracleGuided_JAIR_2025.Theorem1
 
 /-!
-# SMPMC: the induced-MDP abstraction is sound for every set of assignments
+# SMPMC (AAAI 2026): the induced-MDP abstraction is sound for every set of assignments
 
 Heck, Macák, Češka, Junges: *Constrained and Robust Policy Synthesis with
-Satisfiability-Modulo-Probabilistic-Model-Checking*, arXiv:2511.08078, Section 4.3.
+Satisfiability-Modulo-Probabilistic-Model-Checking*, AAAI 2026 (arXiv:2511.08078), Section 4.3.
 
 The SMPMC theory solver does not enumerate the assignments in a set `η ⊆ V`. Instead it
 model-checks a single MDP, the induced MDP `C[η]`, as an abstraction of all the Markov chains
@@ -26,12 +26,12 @@ SMT solver then reports the partial assignment as a `T_C`-conflict. The surround
 
 ## Modelling choices
 
-* As in `OracleGuided/Theorem1.lean`, `V^min`/`V^max` range over memoryless policies, and
+* As in `OracleGuided_JAIR_2025/Theorem1.lean`, `V^min`/`V^max` range over memoryless policies, and
   `V(C[θ])` is the single value `C.expCost`/`C.reachProb` of the induced Markov chain.
 * Values are stated at every state `s`, not only at the initial state.
 -/
 
-namespace LeanProofs.SMPMC
+namespace LeanProofs.SMPMC_AAAI_2026
 
 open MDP
 
@@ -76,4 +76,4 @@ theorem theorem5_min (c : C.M.Costs) (s : State) (ν : ENNReal)
     ν ≤ C.expCost (hη hθ) c s := by
   sorry
 
-end LeanProofs.SMPMC
+end LeanProofs.SMPMC_AAAI_2026

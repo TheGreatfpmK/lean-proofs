@@ -25,7 +25,7 @@ Synthesis Under Uncertainty*, JAIR 82 (2025), Section 3.1, Theorem 1.
   total cost version, the objective of arXiv:2511.08078.
 -/
 
-namespace LeanProofs.OracleGuided
+namespace LeanProofs.OracleGuided_JAIR_2025
 
 open MDP
 
@@ -73,4 +73,4 @@ theorem theorem1_cost (hV : C.V.Nonempty) (c : C.M.Costs) (s : State) :
     rw [hval θ]
     exact le_iSup (fun ℒ : 𝔏[C.M] ↦ ⨆ n, C.M.EC c ℒ n s) (C.policy θ.2)
 
-end LeanProofs.OracleGuided
+end LeanProofs.OracleGuided_JAIR_2025

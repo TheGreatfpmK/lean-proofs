@@ -1,5 +1,5 @@
 import Paper.Syntax
-import LeanProofs.OracleGuided.Theorem1
+import LeanProofs.OracleGuided_JAIR_2025.Theorem1
 
 /-!
 # JAIR 2025 (Oracle-guided policy synthesis): index
@@ -7,7 +7,7 @@ import LeanProofs.OracleGuided.Theorem1
 Maps the numbered items of the paper to Lean declarations (see `LeanProofs/Example/Index.lean`).
 -/
 
-namespace LeanProofs.OracleGuided.Index
+namespace LeanProofs.OracleGuided_JAIR_2025.Index
 
 set_option linter.unusedSectionVars false
 
@@ -20,6 +20,6 @@ Section 2, Definition 1: ColoredMDP State Act Θ
 
 /-! ## Section 3 – Abstraction Refinement -/
 
-Section 3, Theorem 1: LeanProofs.OracleGuided.theorem1_reach C
+Section 3, Theorem 1: LeanProofs.OracleGuided_JAIR_2025.theorem1_reach C
 
-end LeanProofs.OracleGuided.Index
+end LeanProofs.OracleGuided_JAIR_2025.Index

@@ -1,12 +1,12 @@
-# OracleGuided: formalization progress
+# OracleGuided_JAIR_2025: formalization progress
 
 Source: Andriushchenko, Češka, Macák, Junges, Katoen. *An Oracle-Guided Approach to Constrained
 Policy Synthesis Under Uncertainty*. JAIR 82 (2025), https://doi.org/10.1613/jair.1.16593
 
 | Item | Lean declaration | File | Status | Notes |
 |---|---|---|---|---|
-| Thm. 1 (§3.1) | `LeanProofs.OracleGuided.theorem1_reach` | Theorem1.lean | proved | as in the paper (reachability) |
-| Thm. 1 (§3.1), reward variant | `LeanProofs.OracleGuided.theorem1_cost` | Theorem1.lean | proved | expected total cost |
+| Thm. 1 (§3.1) | `LeanProofs.OracleGuided_JAIR_2025.theorem1_reach` | Theorem1.lean | proved | as in the paper (reachability) |
+| Thm. 1 (§3.1), reward variant | `LeanProofs.OracleGuided_JAIR_2025.theorem1_cost` | Theorem1.lean | proved | expected total cost |
 
 Status: stated (has `sorry`, ready to prove) · in progress · proved · blocked · false
 
@@ -23,8 +23,12 @@ Dependencies: both follow quickly from `ColoredMDP.ReachProbN_inducedMC` / `Colo
   identified with its consistent memoryless policy, then `iInf`/`iSup` bounds give the three
   inequalities; nonemptiness supplies the middle inequality.
 - Proved `theorem1_cost` analogously via `ColoredMDP.EC_inducedMC`.
-- `scripts/lean check LeanProofs/OracleGuided/Theorem1.lean` and the axiom checks for both targets
+- `scripts/lean check LeanProofs/OracleGuided_JAIR_2025/Theorem1.lean` and the axiom checks for both targets
   pass with only standard axioms. The internal checkpoint review found zero sorries and only two
   optional `apply`/`exact` inlining suggestions. `scripts/lean build` succeeds, including
-  `OracleGuided.Index`; its only warning is the pre-existing sorry in `AgentTest.Loop`.
+  `OracleGuided_JAIR_2025.Index`; its only warning is the pre-existing sorry in `AgentTest.Loop`.
 - No open targets remain in this project.
+
+### 2026-11-10 (maintenance)
+- Project folder and namespace renamed to `OracleGuided_JAIR_2025`
+  (paper-project naming convention, AGENTS.md §3). Statements unchanged.

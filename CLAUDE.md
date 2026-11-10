@@ -34,7 +34,10 @@ follow `AGENTS.md` sections 4–6: statements are fixed, no `sorry` or axioms, a
 - **The laptop disk is nearly full** (WSL on C:, about 12 GB free after setup). Avoid new large
   local data. Ask before deleting anything not created in the current session.
 - Projects live in `LeanProofs/<Project>/` and may import each other. Shared lemmas go in
-  `LeanProofs/Common/`.
+  `LeanProofs/Common/`. A project tied to one paper is named `<Short>_<VENUE>_<YEAR>`
+  (`OracleGuided_JAIR_2025`, `SMPMC_AAAI_2026`). Material shared by several papers gets a
+  generic name (`ColoredMDP`). Use underscores, because hyphens are not allowed in Lean module
+  names. The namespace equals the folder name. See AGENTS.md §3.
 
 ## How it fits together
 
@@ -176,7 +179,7 @@ follow `AGENTS.md` sections 4–6: statements are fixed, no `sorry` or axioms, a
   lemmas `EC_inducedMC`/`ReachProbN_inducedMC`. It again made every helper `private`;
   `AGENTS.md` §3 now requires reusable helpers to be public, with an "API" row in
   `PROGRESS.md`.
-- `OracleGuided/Theorem1.lean` (2026-11-10): **JAIR Theorem 1 proved** in both variants in
+- `OracleGuided_JAIR_2025/Theorem1.lean` (2026-11-10): **JAIR Theorem 1 proved** in both variants in
   14 min, following the paper's Proof 1 (consistent policies are a subset of all policies). After
   this, the only `sorry` in the project is the deliberately false `AgentTest.geo_le_one`.
 

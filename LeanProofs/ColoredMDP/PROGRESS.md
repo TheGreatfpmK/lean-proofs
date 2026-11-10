@@ -36,15 +36,15 @@ Status: stated (has `sorry`, ready to prove) · in progress · proved · blocked
   both weighted path sums. No target statements or definitions were changed.
 - Validation: `scripts/lean check LeanProofs/ColoredMDP/Basic.lean` reports no errors or sorries;
   all eight targets use only standard axioms; `scripts/lean build` succeeds. The whole-project
-  build reports only pre-existing sorries in AgentTest/Loop.lean and OracleGuided/Theorem1.lean.
+  build reports only pre-existing sorries in AgentTest/Loop.lean and OracleGuided_JAIR_2025/Theorem1.lean.
 
 ### 2026-11-06 (setup)
 - Definitions written and checked to compile. Basic lemmas stated: they carry the real content
-  of JAIR Theorem 1 (`LeanProofs/OracleGuided/Theorem1.lean`).
+  of JAIR Theorem 1 (`LeanProofs/OracleGuided_JAIR_2025/Theorem1.lean`).
 
 ### 2026-11-10 (overseer)
 - Made the nine path-transfer helpers public (API row above).
 
 ### 2026-11-10 (setup)
 - Added `Restrict.lean`: the restriction `C_η` and its lemmas (statements only), for the SMPMC
-  abstraction-soundness results in `LeanProofs/SMPMC/Abstraction.lean`.
+  abstraction-soundness results in `LeanProofs/SMPMC_AAAI_2026/Abstraction.lean`.

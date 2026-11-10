@@ -101,7 +101,7 @@ on `PATH`, and the working directory is the repository root.
 ## 3. Repository layout
 
 ```
-LeanProofs/<Project>/      one folder per research project (CamelCase name)
+LeanProofs/<Project>/      one folder per project; naming rules below
     Defs.lean              definitions specific to the project (reuse Aurora/Mathlib/other projects)
     *.lean                 statements and proofs, split by topic
     PROGRESS.md            status of every target statement + session log (keep it up to date!)
@@ -115,8 +115,14 @@ docs/aurora.md             Aurora cheat sheet
 scripts/lean               the only way to run Lean (section 1)
 ```
 
-- Namespaces follow the folders: `namespace LeanProofs.<Project>`. Use `LeanProofs.Common` for
-  shared lemmas.
+- **Project names.** A project tied to one paper is named `<Short>_<VENUE>_<YEAR>`, for example
+  `OracleGuided_JAIR_2025` or `SMPMC_AAAI_2026`; it holds that paper's numbered results and its
+  `Index.lean`. Use underscores, not hyphens: hyphens are not allowed in Lean module names.
+  Material shared by several papers (a model, its basic theory) goes in a generic CamelCase
+  project such as `ColoredMDP`, which the paper projects import. The user chooses and renames
+  projects; do not create or rename a project folder unless asked.
+- Namespaces follow the folders: `namespace LeanProofs.<Project>`, for example
+  `LeanProofs.SMPMC_AAAI_2026.theorem5_max`. Use `LeanProofs.Common` for shared lemmas.
 - **Projects build on each other.** A project may import another project's modules
   (`import LeanProofs.OtherProject.Foo`), and you should reuse results proved elsewhere in the
   repo rather than re-proving them. Imports must not form a cycle. If two projects need each

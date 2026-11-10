@@ -124,7 +124,16 @@ The slash commands in `.opencode/commands/` wrap the lean4 skill's workflows:
 | `/checkpoint` | full build, axiom check, update `PROGRESS.md`, commit |
 
 Each research project is a folder `LeanProofs/<Project>/`. Projects can import each other, and
-shared lemmas go in `LeanProofs/Common/`. The workflow:
+shared lemmas go in `LeanProofs/Common/`. Folder names:
+
+- **Tied to one paper:** `<Short>_<VENUE>_<YEAR>`, for example `OracleGuided_JAIR_2025` or
+  `SMPMC_AAAI_2026`. These hold the paper's numbered results and its `Index.lean`. Use
+  underscores: Lean module names cannot contain hyphens (`LeanProofs.«SMPMC-AAAI-2026»` would
+  need quoting in every import).
+- **Shared by several papers:** a generic name, for example `ColoredMDP` (definitions and basic
+  theory of coloured MDPs).
+
+The namespace is the folder name (`LeanProofs.SMPMC_AAAI_2026`). The workflow:
 
 1. **You formalize** the statements, by hand or with `/formalize` or another agent. Leave the
    proofs as `sorry`, list the statements in the project's `PROGRESS.md`, and commit them with
