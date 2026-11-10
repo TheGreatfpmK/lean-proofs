@@ -76,13 +76,14 @@ theorem restrict_induced (η' : Set Θ) (hη' : η' ⊆ η) (hne' : η'.Nonempty
 /-- For `θ ∈ η`, the Markov chain of `θ` is the same in `C_η` as in `C`. -/
 theorem restrict_inducedMC {θ : Θ} (hθ : θ ∈ η) :
     (C.restrict η hη hne).inducedMC hθ = C.inducedMC (hη hθ) := by
-  sorry
+  exact C.restrict_induced η hη hne {θ} (Set.singleton_subset_iff.mpr hθ)
+    (Set.singleton_nonempty θ)
 
 /-- For `θ ∈ η`, the reachability probability of `θ`'s Markov chain is the same in `C_η` as in
 `C`. -/
 theorem restrict_reachProb {θ : Θ} (hθ : θ ∈ η) (T : Set State) (s : State) :
     (C.restrict η hη hne).reachProb hθ T s = C.reachProb (hη hθ) T s := by
-  sorry
+  rw [reachProb, reachProb, C.restrict_inducedMC η hη hne hθ]
 
 /-- For `θ ∈ η`, the expected total cost of `θ`'s Markov chain is the same in `C_η` as in `C`. -/
 theorem restrict_expCost {θ : Θ} (hθ : θ ∈ η) (c : C.M.Costs) (s : State) :
