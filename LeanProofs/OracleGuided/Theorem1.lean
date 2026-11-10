@@ -38,7 +38,19 @@ theorem theorem1_reach (hV : C.V.Nonempty) (T : Set State) (s : State) :
     C.M.Pmin T s ≤ ⨅ θ : C.V, C.reachProb θ.2 T s ∧
       ⨅ θ : C.V, C.reachProb θ.2 T s ≤ ⨆ θ : C.V, C.reachProb θ.2 T s ∧
       ⨆ θ : C.V, C.reachProb θ.2 T s ≤ C.M.Pmax T s := by
-  sorry
+  have hval (θ : C.V) : C.reachProb θ.2 T s = C.M.ReachProb (C.policy θ.2) T s := by
+    simp only [ColoredMDP.reachProb, MDP.ReachProb]
+    apply iSup_congr
+    intro n
+    exact C.ReachProbN_inducedMC θ.2 _ T n s
+  let _ : Nonempty C.V := hV.to_subtype
+  refine ⟨?_, iInf_le_iSup, ?_⟩
+  · refine le_iInf fun θ ↦ ?_
+    rw [hval θ]
+    exact iInf_le _ (C.policy θ.2)
+  · refine iSup_le fun θ ↦ ?_
+    rw [hval θ]
+    exact le_iSup (fun ℒ : 𝔏[C.M] ↦ C.M.ReachProb ℒ T s) (C.policy θ.2)
 
 /-- **JAIR 2025, Theorem 1** (expected total cost variant). The optimal expected total costs
 of the underlying MDP bound those of every Markov chain in the family:
@@ -47,6 +59,18 @@ theorem theorem1_cost (hV : C.V.Nonempty) (c : C.M.Costs) (s : State) :
     C.M.Vmin c s ≤ ⨅ θ : C.V, C.expCost θ.2 c s ∧
       ⨅ θ : C.V, C.expCost θ.2 c s ≤ ⨆ θ : C.V, C.expCost θ.2 c s ∧
       ⨆ θ : C.V, C.expCost θ.2 c s ≤ C.M.Vmax c s := by
-  sorry
+  have hval (θ : C.V) : C.expCost θ.2 c s = ⨆ n, C.M.EC c (C.policy θ.2) n s := by
+    simp only [ColoredMDP.expCost]
+    apply iSup_congr
+    intro n
+    exact C.EC_inducedMC θ.2 c _ n s
+  let _ : Nonempty C.V := hV.to_subtype
+  refine ⟨?_, iInf_le_iSup, ?_⟩
+  · refine le_iInf fun θ ↦ ?_
+    rw [hval θ]
+    exact iInf_le _ (C.policy θ.2)
+  · refine iSup_le fun θ ↦ ?_
+    rw [hval θ]
+    exact le_iSup (fun ℒ : 𝔏[C.M] ↦ ⨆ n, C.M.EC c ℒ n s) (C.policy θ.2)
 
 end LeanProofs.OracleGuided
