@@ -43,7 +43,10 @@ theorem action_mem_act_induced {η : Set Θ} (hη : η ⊆ C.V) (hne : η.Nonemp
 condition that makes `C_η = (C[η], η, κ)` a colored MDP. -/
 theorem existsUnique_act_induced {η : Set Θ} (hη : η ⊆ C.V) (hne : η.Nonempty) {θ : Θ}
     (hθ : θ ∈ η) (s : State) : ∃! α, α ∈ (C.induced η hη hne).act s ∧ θ ∈ C.κ s α := by
-  sorry
+  have hact := C.action_mem_act_induced hη hne hθ s
+  have hspec := C.action_spec (hη hθ) s
+  exact ⟨C.action (hη hθ) s, ⟨hact, hspec.2⟩, fun α hα ↦
+    C.action_unique (hη hθ) (C.mem_act_of_mem_act_induced hα.1) hα.2⟩
 
 /-- The colored MDP `C_η = (C[η], η, κ)`: `C` restricted to the nonempty parameter space
 `η ⊆ C.V` (arXiv:2511.08078, proof of Theorem 5). -/
@@ -60,7 +63,15 @@ variable (η : Set Θ) (hη : η ⊆ C.V) (hne : η.Nonempty)
 `C_η[η'] = C[η']` (arXiv:2511.08078, proof of Theorem 5). -/
 theorem restrict_induced (η' : Set Θ) (hη' : η' ⊆ η) (hne' : η'.Nonempty) :
     (C.restrict η hη hne).induced η' hη' hne' = C.induced η' (hη'.trans hη) hne' := by
-  sorry
+  classical
+  simp only [restrict, induced, MDP.mk.injEq]
+  funext s α
+  by_cases h' : (η' ∩ C.κ s α).Nonempty
+  · have h : (η ∩ C.κ s α).Nonempty := by
+      obtain ⟨θ, hθ, hκ⟩ := h'
+      exact ⟨θ, hη' hθ, hκ⟩
+    simp [h', h]
+  · simp [h']
 
 /-- For `θ ∈ η`, the Markov chain of `θ` is the same in `C_η` as in `C`. -/
 theorem restrict_inducedMC {θ : Θ} (hθ : θ ∈ η) :
