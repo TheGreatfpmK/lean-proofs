@@ -26,12 +26,18 @@ variable {State Act Θ : Type*} (C : ColoredMDP State Act Θ)
 /-- An action is available in the induced MDP `C[η]` only if it is available in `C.M`. -/
 theorem mem_act_of_mem_act_induced {η : Set Θ} {hη : η ⊆ C.V} {hne : η.Nonempty} {s : State}
     {α : Act} (h : α ∈ (C.induced η hη hne).act s) : α ∈ C.M.act s := by
-  sorry
+  classical
+  simp only [MDP.act, induced, Set.mem_setOf_eq] at h ⊢
+  split_ifs at h <;> simp_all
 
 /-- The action that an assignment `θ ∈ η` selects is available in the induced MDP `C[η]`. -/
 theorem action_mem_act_induced {η : Set Θ} (hη : η ⊆ C.V) (hne : η.Nonempty) {θ : Θ}
     (hθ : θ ∈ η) (s : State) : C.action (hη hθ) s ∈ (C.induced η hη hne).act s := by
-  sorry
+  classical
+  simp only [MDP.act, induced, Set.mem_setOf_eq]
+  rw [if_pos (show (η ∩ C.κ s (C.action (hη hθ) s)).Nonempty from
+    ⟨θ, hθ, (C.action_spec (hη hθ) s).2⟩)]
+  exact (C.action_spec (hη hθ) s).1
 
 /-- Every `θ ∈ η` selects exactly one action that is available in `C[η]`. This is the
 condition that makes `C_η = (C[η], η, κ)` a colored MDP. -/
