@@ -78,7 +78,7 @@ is below `ν`. -/
 theorem theorem5_max (c : C.M.Costs) (s : State) (ν : ENNReal)
     (hlt : (C.induced η hη hne).Vmax c s < ν) {θ : Θ} (hθ : θ ∈ η) :
     C.expCost (hη hθ) c s < ν := by
-  sorry
+  exact (expCost_le_Vmax_induced C η hη hne hθ c s).trans_lt hlt
 
 /-- **arXiv:2511.08078, Theorem 5** (semantic core, `¬viable` case). If the minimal expected
 cost of the abstraction `C[η]` is at least the threshold `ν`, then every Markov chain of the
@@ -86,6 +86,6 @@ family `η` is at least `ν`. -/
 theorem theorem5_min (c : C.M.Costs) (s : State) (ν : ENNReal)
     (hge : ν ≤ (C.induced η hη hne).Vmin c s) {θ : Θ} (hθ : θ ∈ η) :
     ν ≤ C.expCost (hη hθ) c s := by
-  sorry
+  exact hge.trans (Vmin_induced_le_expCost C η hη hne hθ c s)
 
 end LeanProofs.SMPMC_AAAI_2026
